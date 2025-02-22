@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "driver.h"
 
-#define NUM_ARGUMENTS 2
+#define NUM_ARGUMENTS 3
 
 int main(int argc, char** argv) {
 
@@ -11,6 +11,6 @@ int main(int argc, char** argv) {
         argc, NUM_ARGUMENTS);
     exit(1); 
   }
-  Compile(argv[1]);
+  Compile(argv[2]);
   return 0;
 }

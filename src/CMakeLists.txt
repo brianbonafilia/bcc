@@ -1,4 +1,4 @@
-set(SOURCE_FILES main.c driver.c)
+set(SOURCE_FILES main.c driver.c lexer.c)
 
 set(EXECUTABLE_OUTPUT_PATH ..)
 
