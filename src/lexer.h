@@ -1,12 +1,31 @@
+#ifndef SRC_LEXER_H
+#define SRC_LEXER_H
+
 #include <stdio.h>
 
-#define BRK "{}();" 
+#define BRK "{}();"
 
-enum TokenType {
+static const char *TypeStr[] = {
+    "tInvalidToken",
+    "tIdentifier",
+    "tConstant",
+    "tInt",
+    "tVoid",
+    "tReturn",
+    "tOpenParen",
+    "tCloseParen",
+    "tOpenBrace",
+    "tCloseBrace",
+    "tSemicolin",
+    "tEof"
+};
+
+typedef enum {
   tInvalidToken,
   tIdentifier,
   tConstant,
   tInt,
+  tVoid,
   tReturn,
   tOpenParen,
   tCloseParen,
@@ -14,19 +33,24 @@ enum TokenType {
   tCloseBrace,
   tSemicolin,
   tEof
-};
+} TokenType;
 
-struct TokenList {
-  struct Token* tokens;
-  int length;
-};
-
-struct Token {
-  enum TokenType type;
+typedef struct {
+  TokenType type;
   // to be used for identifiers and constants
   // might need to rethink for digits.
   char value[120];
-};
+} Token;
 
-struct Token NextToken(FILE* fp);
-struct TokenList Lex(FILE* fp);
+typedef struct {
+  Token *tokens;
+  int length;
+} TokenList;
+
+Token NextToken(FILE *fp);
+TokenList Lex(FILE *fp);
+
+Token DequeueToken(TokenList *token_list);
+
+const char *TokenTypeStr(TokenType type);
+#endif

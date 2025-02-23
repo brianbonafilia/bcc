@@ -24,8 +24,8 @@ bool IsBreak(char c) {
   return false;
 }
 
-struct Token GetAlphaToken(FILE *fp) {
-  struct Token result;
+ Token GetAlphaToken(FILE *fp) {
+   Token result;
   int index = 0;
   char c = fgetc(fp);
   while (isalpha(c)) {
@@ -44,6 +44,10 @@ struct Token GetAlphaToken(FILE *fp) {
       result.type = tReturn;
       return result;
     }
+    if (strcmp(result.value, "void") == 0) {
+      result.type = tVoid;
+      return result;
+    }
     result.type = tIdentifier;
     return result;
   }
@@ -51,8 +55,8 @@ struct Token GetAlphaToken(FILE *fp) {
   return result;
 }
 
-struct Token GetConstantToken(FILE *fp) {
-  struct Token result;
+ Token GetConstantToken(FILE *fp) {
+   Token result;
   int index = 0;
   char c = fgetc(fp);
   while (isdigit(c)) {
@@ -70,8 +74,8 @@ struct Token GetConstantToken(FILE *fp) {
   return result;
 }
 
-struct Token NextToken(FILE *fp) {
-  struct Token result;
+ Token NextToken(FILE *fp) {
+   Token result;
   char c = fgetc(fp);
   // trim whitespace before next token.
   while (isspace(c)) {
@@ -104,12 +108,12 @@ struct Token NextToken(FILE *fp) {
   }
 }
 
-struct TokenList Lex(FILE *fp) {
-  struct TokenList token_list;
-  struct Token *tokens = malloc(sizeof(struct Token) * MAX_TOKENS);
+ TokenList Lex(FILE *fp) {
+   TokenList token_list;
+   Token *tokens = malloc(sizeof(Token) * MAX_TOKENS);
   token_list.tokens = tokens;
   int index = 0;
-  struct Token next_token = NextToken(fp);
+   Token next_token = NextToken(fp);
   while (next_token.type != tInvalidToken && next_token.type != tEof) {
     tokens[index++] = next_token;
     next_token = NextToken(fp);
@@ -119,3 +123,11 @@ struct TokenList Lex(FILE *fp) {
   return token_list;
 }
 
+Token DequeueToken(TokenList *token_list) {
+  token_list->length--;
+  return *token_list->tokens++;
+}
+
+const char *TokenTypeStr(TokenType type) {
+  return TypeStr[type];
+}

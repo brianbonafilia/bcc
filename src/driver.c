@@ -4,10 +4,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "arena.h"
 #include "lexer.h"
+#include "parser.h"
 
 #define PREPROCESSED_EXTENSION 'i'
 #define ASSEMBLY_EXTENSION 'S'
+
+// 16 pages, will mess with this eventually.
+#define DEFAULT_MEM 4096 * 16
 
 void ChangeFileExtension(char *out_file, char extension) {
   while (*out_file != '\0') {
@@ -48,13 +53,18 @@ void Preprocess(char *file_name) {
 // Replace with actual compiler implementation eventually
 void InternalCompile(char *file_name) {
   FILE *fp = fopen(file_name, "r");
-  struct TokenList token_list = Lex(fp);
-  struct Token last_token = token_list.tokens[token_list.length - 1];
+  // Phase 1: Lexing
+   TokenList token_list = Lex(fp);
+   Token last_token = token_list.tokens[token_list.length - 1];
   if (last_token.type != tEof) {
     fprintf(stderr, "Failed to compile, got last token type %d and val %s",
             last_token.type, last_token.value);
     exit(2);
   }
+  // Phase 2: Parsing
+  Arena arena = allocate_arena(DEFAULT_MEM);
+  Program* program = ParseTokens(&arena, token_list);
+  free(token_list.tokens);
 }
 
 void AssembleAndLink(char *file_name) {
