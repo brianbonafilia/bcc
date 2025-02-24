@@ -1,5 +1,6 @@
 set(SOURCE_FILES main.c driver.c lexer.c parser.c
-        arena.c)
+        arena.c
+        codegen.c)
 
 set(EXECUTABLE_OUTPUT_PATH ..)
 

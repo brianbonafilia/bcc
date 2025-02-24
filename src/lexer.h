@@ -1,5 +1,5 @@
-#ifndef SRC_LEXER_H
-#define SRC_LEXER_H
+#ifndef BCC_SRC_LEXER_H
+#define BCC_SRC_LEXER_H
 
 #include <stdio.h>
 
@@ -53,4 +53,4 @@ TokenList Lex(FILE *fp);
 Token DequeueToken(TokenList *token_list);
 
 const char *TokenTypeStr(TokenType type);
-#endif
+#endif //BCC_SRC_LEXER_H

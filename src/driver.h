@@ -1,7 +1,13 @@
-#ifndef SRC_DRIVER_H
-#define SRC_DRIVER_H
+#ifndef BCC_SRC_DRIVER_H
+#define BCC_SRC_DRIVER_H
 
-void Compile(char* file_name);
+typedef enum {
+  LEX,
+  PARSE,
+  CODEGEN,
+  FULL
+} Mode;
 
-#endif
+void Compile(char* file_name, Mode mode);
 
+#endif // BCC_SRC_DRIVER_H

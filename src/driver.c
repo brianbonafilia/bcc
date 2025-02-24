@@ -50,21 +50,36 @@ void Preprocess(char *file_name) {
   free(outfile);
 }
 
+void CleanTemporaryFiles(char *file_name) {
+  ChangeFileExtension(file_name, PREPROCESSED_EXTENSION);
+  remove(file_name);
+  ChangeFileExtension(file_name, ASSEMBLY_EXTENSION);
+  remove(file_name);
+}
+
 // Replace with actual compiler implementation eventually
-void InternalCompile(char *file_name) {
+void InternalCompile(char *file_name, Mode mode) {
   FILE *fp = fopen(file_name, "r");
   // Phase 1: Lexing
-   TokenList token_list = Lex(fp);
-   Token last_token = token_list.tokens[token_list.length - 1];
+  TokenList token_list = Lex(fp);
+  Token last_token = token_list.tokens[token_list.length - 1];
   if (last_token.type != tEof) {
     fprintf(stderr, "Failed to compile, got last token type %d and val %s",
             last_token.type, last_token.value);
     exit(2);
   }
+  if (mode == LEX) {
+    exit(0);
+  }
   // Phase 2: Parsing
   Arena arena = allocate_arena(DEFAULT_MEM);
-  Program* program = ParseTokens(&arena, token_list);
+  Program *program = ParseTokens(&arena, token_list);
   free(token_list.tokens);
+  if (mode == PARSE) {
+    exit(0);
+  }
+  // Phase 3: Assembly Generation
+
 }
 
 void AssembleAndLink(char *file_name) {
@@ -87,14 +102,12 @@ void AssembleAndLink(char *file_name) {
   free(outfile);
 }
 
-void CleanTemporaryFiles(char *file_name) {
-
-}
-
-void Compile(char *file_name) {
+void Compile(char *file_name, Mode mode) {
+  printf("Mode is %d", mode);
   Preprocess(file_name);
   ChangeFileExtension(file_name, PREPROCESSED_EXTENSION);
-  InternalCompile(file_name);
+  InternalCompile(file_name, mode);
   ChangeFileExtension(file_name, ASSEMBLY_EXTENSION);
   AssembleAndLink(file_name);
+  CleanTemporaryFiles(file_name);
 }

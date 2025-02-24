@@ -15,8 +15,8 @@
  * statement = Return(exp)
  * exp = Constant(int)
  */
-#ifndef SRC_PARSER_H
-#define SRC_PARSER_H
+#ifndef BCC_SRC_PARSER_H
+#define BCC_SRC_PARSER_H
 #include "lexer.h"
 
 typedef enum {
@@ -44,4 +44,4 @@ typedef struct {
 } Program;
 
 Program* ParseTokens(Arena* arena, TokenList list);
-#endif
+#endif // BCC_SRC_PARSER_H

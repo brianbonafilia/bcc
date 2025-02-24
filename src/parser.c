@@ -1,3 +1,4 @@
+#include <string.h>
 #include "arena.h"
 #include "parser.h"
 #include "lexer.h"
@@ -6,6 +7,7 @@ void ExpectTokenType(Token token, TokenType type) {
   if (token.type != type) {
     fprintf(stderr, "Expected type %s but got type %s", TokenTypeStr(type),
             TokenTypeStr(token.type));
+    exit(2);
   }
 }
 
@@ -33,7 +35,8 @@ Function* ParseFunction(Arena* arena, TokenList* list) {
   ExpectTokenType(token, tInt);
   token = DequeueToken(list);
   ExpectTokenType(token, tIdentifier);
-  f->name = token.value;
+  f->name = arena_alloc(arena, strlen(token.value));
+  strcpy(f->name, token.value);
   ExpectTokenType(DequeueToken(list), tOpenParen);
   ExpectTokenType(DequeueToken(list), tVoid);
   ExpectTokenType(DequeueToken(list), tCloseParen);
@@ -46,5 +49,6 @@ Function* ParseFunction(Arena* arena, TokenList* list) {
 Program* ParseTokens(Arena* arena, TokenList list) {
   Program* program = arena_alloc(arena, sizeof(program));
   program->function = ParseFunction(arena, &list);
+  ExpectTokenType(DequeueToken(&list), tEof);
   return program;
 }
