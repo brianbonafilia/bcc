@@ -24,8 +24,8 @@ bool IsBreak(char c) {
   return false;
 }
 
- Token GetAlphaToken(FILE *fp) {
-   Token result;
+Token GetAlphaToken(FILE *fp) {
+  Token result;
   int index = 0;
   char c = fgetc(fp);
   while (isalpha(c)) {
@@ -55,8 +55,8 @@ bool IsBreak(char c) {
   return result;
 }
 
- Token GetConstantToken(FILE *fp) {
-   Token result;
+Token GetConstantToken(FILE *fp) {
+  Token result;
   int index = 0;
   char c = fgetc(fp);
   while (isdigit(c)) {
@@ -74,8 +74,8 @@ bool IsBreak(char c) {
   return result;
 }
 
- Token NextToken(FILE *fp) {
-   Token result;
+Token NextToken(FILE *fp) {
+  Token result;
   char c = fgetc(fp);
   // trim whitespace before next token.
   while (isspace(c)) {
@@ -86,34 +86,55 @@ bool IsBreak(char c) {
     return result;
   }
   switch (c) {
-    case '{':result.type = tOpenBrace;
+    case '{':
+      result.type = tOpenBrace;
       return result;
-    case '}':result.type = tCloseBrace;
+    case '}':
+      result.type = tCloseBrace;
       return result;
-    case '(':result.type = tOpenParen;
+    case '(':
+      result.type = tOpenParen;
       return result;
-    case ')':result.type = tCloseParen;
+    case ')':
+      result.type = tCloseParen;
       return result;
-    case ';':result.type = tSemicolin;
+    case ';':
+      result.type = tSemicolin;
+      return result;
+    case '~':
+      result.type = tTilde;
+      return result;
+    case '-':
+      c = fgetc(fp);
+      if (c == '-') {
+        result.type = tInvalidToken;
+        strcpy("--", result.value);
+        return result;
+      }
+      ungetc(c, fp);
+      result.type = tMinus;
       return result;
     case 'a' ... 'z':
-    case 'A' ... 'Z':ungetc(c, fp);
+    case 'A' ... 'Z':
+      ungetc(c, fp);
       return GetAlphaToken(fp);
-    case '0' ... '9':ungetc(c, fp);
+    case '0' ... '9':
+      ungetc(c, fp);
       return GetConstantToken(fp);
-    default:result.type = tInvalidToken;
+    default:
+      result.type = tInvalidToken;
       result.value[0] = c;
       result.value[1] = '\0';
       return result;
   }
 }
 
- TokenList Lex(FILE *fp) {
-   TokenList token_list;
-   Token *tokens = malloc(sizeof(Token) * MAX_TOKENS);
+TokenList Lex(FILE *fp) {
+  TokenList token_list;
+  Token *tokens = malloc(sizeof(Token) * MAX_TOKENS);
   token_list.tokens = tokens;
   int index = 0;
-   Token next_token = NextToken(fp);
+  Token next_token = NextToken(fp);
   while (next_token.type != tInvalidToken && next_token.type != tEof) {
     tokens[index++] = next_token;
     next_token = NextToken(fp);

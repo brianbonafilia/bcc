@@ -7,6 +7,7 @@
 #include "arena.h"
 #include "lexer.h"
 #include "parser.h"
+#include "codegen.h"
 
 #define PREPROCESSED_EXTENSION 'i'
 #define ASSEMBLY_EXTENSION 'S'
@@ -79,7 +80,10 @@ void InternalCompile(char *file_name, Mode mode) {
     exit(0);
   }
   // Phase 3: Assembly Generation
-
+  ArmProgram* arm_program = Translate(&arena, program);
+  char* s_file = strdup(file_name);
+  ChangeFileExtension(s_file, ASSEMBLY_EXTENSION);
+  WriteArmAssembly(arm_program, s_file);
 }
 
 void AssembleAndLink(char *file_name) {
@@ -109,5 +113,5 @@ void Compile(char *file_name, Mode mode) {
   InternalCompile(file_name, mode);
   ChangeFileExtension(file_name, ASSEMBLY_EXTENSION);
   AssembleAndLink(file_name);
-  CleanTemporaryFiles(file_name);
+  //CleanTemporaryFiles(file_name);
 }

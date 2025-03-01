@@ -35,7 +35,7 @@ Function* ParseFunction(Arena* arena, TokenList* list) {
   ExpectTokenType(token, tInt);
   token = DequeueToken(list);
   ExpectTokenType(token, tIdentifier);
-  f->name = arena_alloc(arena, strlen(token.value));
+  f->name = arena_alloc(arena, strlen(token.value) + 1);
   strcpy(f->name, token.value);
   ExpectTokenType(DequeueToken(list), tOpenParen);
   ExpectTokenType(DequeueToken(list), tVoid);

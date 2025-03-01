@@ -8,32 +8,49 @@
 #ifndef BCC_SRC_CODEGEN_H_
 #define BCC_SRC_CODEGEN_H_
 
+#include "arena.h"
+#include "parser.h"
+
 typedef enum {
   MOV,
   RET
 } InstructionType;
 
-typedef struct
+typedef enum {
+  REGISTER,
+  IMM
+} OperandType;
 
 typedef struct {
+  OperandType type;
+  union {
+    int imm;
+  };
+} Operand;
 
+typedef struct {
+  Operand src;
+  Operand dst;
 } Mov;
 
 typedef struct {
-
+  InstructionType type;
   union {
-
+    Mov mov;
   };
 } Instruction;
 
 typedef struct {
-
+  char* name;
+  Instruction* instructions;
   int length;
 } ArmFunction;
 
 typedef struct {
-  char* name;
   ArmFunction* function_def;
 } ArmProgram;
+
+ArmProgram* Translate(Arena* arena, Program* program);
+void WriteArmAssembly(ArmProgram* program, char* s_file);
 
 #endif //BCC_SRC_CODEGEN_H_

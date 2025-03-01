@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-#define BRK "{}();"
+#define BRK "{}();~-"
 
 static const char *TypeStr[] = {
     "tInvalidToken",
@@ -32,6 +32,9 @@ typedef enum {
   tOpenBrace,
   tCloseBrace,
   tSemicolin,
+  tMinus,
+  tDecrementer,
+  tTilde,
   tEof
 } TokenType;
 

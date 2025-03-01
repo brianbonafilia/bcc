@@ -21,8 +21,9 @@ void* arena_alloc(Arena* arena, int size_in_bytes) {
     fprintf(stderr, "out of memory in arena");
     exit(2);
   }
+  void* ret = arena->next_ptr;
   arena->next_ptr += size_in_bytes;
-  return arena->next_ptr;
+  return ret;
 }
 
 void release(Arena* arena) {
