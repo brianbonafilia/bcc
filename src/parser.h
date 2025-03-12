@@ -5,7 +5,8 @@
  * <program> ::= <function>
  * <function> ::= "int" <identifier> "(" "void" ")" "{" <statement> "}"
  * <statement> ::= "return" <exp> ";"
- * <exp> ::= <int>
+ * <exp> ::= <int> | <unop> <exp> | "(" <exp> ")"
+ * <unop> ::= "-" | "~"
  * <identifier> ::= ? identifier ?
  * <int> ::= ? constant ?
  *
@@ -13,24 +14,44 @@
  * program = Program(function_definition()
  * function_definition = Function(identifier name, statement body)
  * statement = Return(exp)
- * exp = Constant(int)
+ * exp = Constant(int) | Unary(unary_operator, exp)
+ * unary_operator = Complement | Negate
  */
 #ifndef BCC_SRC_PARSER_H
 #define BCC_SRC_PARSER_H
+#include "arena.h"
 #include "lexer.h"
 
 typedef enum {
   eConst,
+  eUnaryExp
 } ExpType;
 
+typedef enum {
+  COMPLEMENT,
+  NEGATE
+} UnaryOp;
+
+typedef enum {
+  S_RETURN
+} StatementType;
+
+typedef struct Exp Exp;
 typedef struct {
+  UnaryOp op_type;
+  Exp* exp;
+} UnaryExp;
+
+struct Exp {
   ExpType type;
   union {
-    int constValue;
+    int const_val;
+    UnaryExp unary_exp;
   };
-} Exp;
+};
 
 typedef struct {
+  StatementType type;
   Exp* exp;
 } Statement;
 

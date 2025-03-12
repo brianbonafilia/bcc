@@ -1,7 +1,10 @@
 #include <string.h>
+#include <assert.h>
 #include "arena.h"
 #include "parser.h"
 #include "lexer.h"
+
+Exp* ParseExp(Arena* arena, TokenList* list);
 
 void ExpectTokenType(Token token, TokenType type) {
   if (token.type != type) {
@@ -11,17 +14,48 @@ void ExpectTokenType(Token token, TokenType type) {
   }
 }
 
-Exp* ParseExp(Arena* arena, TokenList* list) {
-  Exp* e = arena_alloc(arena, sizeof(e));
+UnaryOp GetOp(TokenType type) {
+  switch(type) {
+    case tTilde:
+      return COMPLEMENT;
+    case tMinus:
+      return NEGATE;
+    default:
+      fprintf(stderr, "encountered bad unary op");
+      exit(1);
+  }
+}
+
+void ParseExpInner(Arena* arena, TokenList* list, Exp* e) {
+  assert(e != NULL);
   Token token = DequeueToken(list);
-  ExpectTokenType(token, tConstant);
-  // TODO: use more proper parsing here. Or store const ints as ints.
-  e->constValue = atoi(token.value);
+  switch (token.type) {
+    case tTilde:
+    case tMinus:
+      e->type = eUnaryExp;
+      e->unary_exp.op_type = GetOp(token.type);
+      e->unary_exp.exp = ParseExp(arena, list);
+      return;
+    case tOpenParen:
+      ParseExpInner(arena, list, e);
+      ExpectTokenType(DequeueToken(list), tCloseParen);
+      return;
+    default:
+      ExpectTokenType(token, tConstant);
+      // TODO: use more proper parsing here. Or store const ints as ints.
+      e->const_val = atoi(token.value);
+  }
+}
+
+Exp* ParseExp(Arena* arena, TokenList* list) {
+  Exp* e = arena_alloc(arena, sizeof(Exp));
+  ParseExpInner(arena, list, e);
   return e;
 }
 
 Statement* ParseStatement(Arena* arena, TokenList* list) {
   Statement* s = arena_alloc(arena, sizeof(Statement));
+  s->type = S_RETURN;
   ExpectTokenType(DequeueToken(list), tReturn);
   s->exp = ParseExp(arena, list);
   ExpectTokenType(DequeueToken(list), tSemicolin);

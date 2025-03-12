@@ -9,7 +9,7 @@ void ToArmInstruction(Arena* arena, Statement* s, ArmFunction* f) {
       f->instructions[0] =  (Instruction) {
           .type = MOV,
           .mov = {
-              .src = {.type = IMM, .imm = s->exp->constValue},
+              .src = {.type = IMM, .imm = s->exp->const_val},
               .dst = {.type = REGISTER}
           }
       };
@@ -32,6 +32,41 @@ ArmProgram* Translate(Arena* arena, Program* program){
   ArmProgram* arm_program = arena_alloc(arena, sizeof(ArmProgram));
   ToArmFunction(arena, program, arm_program);
   return arm_program;
+}
+
+void AllocInstr(Arena* arena, ArmFunction* arm_func) {
+  if (arm_func->length == 0) {
+    arm_func->instructions = arena_alloc(arena, sizeof(Instruction));
+    return;
+  }
+  arena_alloc(arena, sizeof(Instruction));
+}
+
+void AppendArmInstruction(Arena* arena, ArmFunction* arm_func, TackyInstruction t_instr) {
+  
+  switch(t_instr.type) {
+    case TACKY_RETURN:
+      AllocInstr(arena, arm_func); AllocInstr(arena, arm_func);
+      Mov mov;
+      mov.src.type = 
+}
+
+void ToArmInstructionFromTacky(Arena* arena, ArmFunction* arm_func, 
+                              TackyFunction* tacky_func) {
+  
+                                
+
+void ToArmFunctionFromTacky(Arena* arena, TackyProgram* tacky_program,
+                            ArmProgram* arm_program) {
+  arm_program->function_def = arena_alloc(arena, sizeof(ArmFunction));
+  arm_program->function_def->name = tacky_program->identifier;
+
+
+
+ArmProgram* TranslateTacky(Arena* arena, TackyProgram tacky_program) {
+  ArmProgram* arm_program = arena_alloc(arena, sizeof(ArmProgram));
+  ToArmFunctionFromTacky(arena, tacky_program, arm_program);
+  return arm_program;  
 }
 
 void WriteOperand(Operand op, FILE* asm_f) {
@@ -72,3 +107,6 @@ void WriteArmAssembly(ArmProgram* program, char* s_file) {
   WriteFunctionDef(program->function_def, asm_f);
   fclose(asm_f);
 }
+
+
+v

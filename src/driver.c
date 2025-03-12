@@ -8,6 +8,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include "codegen.h"
+#include "pretty_print.h"
 
 #define PREPROCESSED_EXTENSION 'i'
 #define ASSEMBLY_EXTENSION 'S'
@@ -77,9 +78,15 @@ void InternalCompile(char *file_name, Mode mode) {
   Program *program = ParseTokens(&arena, token_list);
   free(token_list.tokens);
   if (mode == PARSE) {
+    PrettyPrintAST(program);
     exit(0);
   }
-  // Phase 3: Assembly Generation
+  // Phase 3: IR GEN
+  TackyProgram* tacky_program = EmitTackyProgram(&arena, program);
+  PrettyPrintTacky(tacky_program);
+
+
+  // Phase 4: Assembly Generation
   ArmProgram* arm_program = Translate(&arena, program);
   char* s_file = strdup(file_name);
   ChangeFileExtension(s_file, ASSEMBLY_EXTENSION);
@@ -107,7 +114,6 @@ void AssembleAndLink(char *file_name) {
 }
 
 void Compile(char *file_name, Mode mode) {
-  printf("Mode is %d", mode);
   Preprocess(file_name);
   ChangeFileExtension(file_name, PREPROCESSED_EXTENSION);
   InternalCompile(file_name, mode);
