@@ -87,7 +87,8 @@ void InternalCompile(char *file_name, Mode mode) {
 
 
   // Phase 4: Assembly Generation
-  ArmProgram* arm_program = Translate(&arena, program);
+  ArmProgram* arm_program = TranslateTacky(&arena, tacky_program);
+  PrettyPrintAssemblyAST(arm_program);
   char* s_file = strdup(file_name);
   ChangeFileExtension(s_file, ASSEMBLY_EXTENSION);
   WriteArmAssembly(arm_program, s_file);

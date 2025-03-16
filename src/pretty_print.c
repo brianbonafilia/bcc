@@ -116,3 +116,87 @@ void PrettyPrintTacky(TackyProgram* tacky_program) {
   PrintTackyFunction(tacky_program->function_def, 4);
   printf("  )\n)\n");
 }
+
+void PrintRegister(Register reg) {
+  switch(reg) {
+    case W0:
+      printf("W0");
+      return;
+    case W10:
+      printf("W10");
+      return;
+  }
+}
+
+void PrintOperand(Operand op) {
+  switch (op.type) {
+    case REGISTER:
+      PrintRegister(op.reg);
+      return;
+    case IMM:
+      printf("%d", op.imm);
+      return;
+    case PSEUDO:
+      printf("%s", op.identifier);
+      return;
+    case STACK:
+      printf("Stack(%d)", op.stack_location);
+      return;
+  }
+}
+
+void PrintArmUnaryOp(UnaryOperator op) {
+  switch(op) {
+    case NEG:
+      printf("NEG");
+      return;
+    case NOT:
+      printf("NOT");
+      return;
+  }
+}
+
+void PrintArmUnary(ArmUnary unary, int padding) {
+  printf("%*sUnary(", padding, "");
+  PrintArmUnaryOp(unary.op);
+  printf(", ");
+  PrintOperand(unary.operand);
+  printf(")\n");
+}
+
+
+void PrintArmInstruction(Instruction* instr, int padding) {
+  switch(instr->type) {
+    case UNARY:
+     PrintArmUnary(instr->unary, padding);
+     return;
+    case MOV:
+      printf("%*sMOV(", padding, "");
+      PrintOperand(instr->mov.src);
+      printf(", ");
+      PrintOperand(instr->mov.dst);
+      printf("),\n");
+      return;
+    case RET:
+      printf("%*sRET,\n", padding, "");
+  }
+}
+
+void PrintArmFunc(ArmFunction* f, int padding) {
+  printf("%*sidentifier = \"%s\"\n", padding, "", f->name);
+  printf("%*sinstructions = [\n", padding, "");
+  padding += 2;
+  for (int i = 0; i < f->length; ++i) {
+    PrintArmInstruction(f->instructions + i, padding);
+  }
+  padding -= 2;
+  printf("%*s]\n", padding, "");
+}
+
+void PrettyPrintAssemblyAST(ArmProgram* arm_program) {
+  printf("ArmProgram(\n");
+  printf("  Function(\n");
+  PrintArmFunc(arm_program->function_def, 4);
+  printf("  )\n)\n)");
+}
+

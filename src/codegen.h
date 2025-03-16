@@ -31,14 +31,22 @@ typedef enum {
 
 typedef enum {
   REGISTER,
-  IMM
+  IMM,
+  PSEUDO,
+  STACK
 } OperandType;
 
 typedef struct {
   OperandType type;
   union {
+    // immediate value
     int imm;
-    Register register;
+    // stack location within frame
+    int stack_location;
+    // variable name, 31 char max as per C lang.
+    char identifier[32];
+    // self explanatory :)
+    Register reg;
   };
 } Operand;
 
@@ -65,8 +73,8 @@ typedef struct {
   InstructionType type;
   union {
     Mov mov;
-    ArmUnary;
-    AllocStack;
+    ArmUnary unary;
+    AllocStack alloc_stack;
   };
 } Instruction;
 
@@ -81,7 +89,7 @@ typedef struct {
 } ArmProgram;
 
 ArmProgram* Translate(Arena* arena, Program* program);
-ArmProgram* TranslateTacky(Arena* arena, TackyProgram tacky_program);
+ArmProgram* TranslateTacky(Arena* arena, TackyProgram* tacky_program);
 void WriteArmAssembly(ArmProgram* program, char* s_file);
 
 #endif //BCC_SRC_CODEGEN_H_
