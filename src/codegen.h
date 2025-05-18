@@ -18,15 +18,22 @@
 #include "parser.h"
 
 typedef enum {
+  // The default initial mov
   MOV,
+  // Store register in mem
+  STR,
+  // load from mem to register
+  LDR,
   RET,
   UNARY,
-  ALLOC_STACK
+  ALLOC_STACK,
+  DEALLOC_STACK
 } InstructionType;
 
 typedef enum {
   W0,
-  W10
+  W10,
+  W11
 } Register;
 
 typedef enum {
@@ -62,7 +69,7 @@ typedef enum {
 
 typedef struct {
   UnaryOperator op;
-  Operand operand;
+  Register reg;
 } ArmUnary;
 
 typedef struct {
@@ -90,6 +97,8 @@ typedef struct {
 
 ArmProgram* Translate(Arena* arena, Program* program);
 ArmProgram* TranslateTacky(Arena* arena, TackyProgram* tacky_program);
+void ReplacePseudoRegisters(Arena* scratch, ArmProgram* tacky_program);
+void InstructionFixUp(Arena* arena, ArmProgram* tacky_program);
 void WriteArmAssembly(ArmProgram* program, char* s_file);
 
 #endif //BCC_SRC_CODEGEN_H_

@@ -125,6 +125,9 @@ void PrintRegister(Register reg) {
     case W10:
       printf("W10");
       return;
+    case W11:
+      printf("W11");
+      return;
   }
 }
 
@@ -160,25 +163,44 @@ void PrintArmUnary(ArmUnary unary, int padding) {
   printf("%*sUnary(", padding, "");
   PrintArmUnaryOp(unary.op);
   printf(", ");
-  PrintOperand(unary.operand);
+  PrintRegister(unary.reg);
   printf(")\n");
 }
 
+void PrintTwoAddress(Operand src, Operand dst) {
+  PrintOperand(src);
+  printf(", ");
+  PrintOperand(dst);
+  printf("),\n");
+}
 
 void PrintArmInstruction(Instruction* instr, int padding) {
   switch(instr->type) {
     case UNARY:
      PrintArmUnary(instr->unary, padding);
      return;
+    case LDR:
+      printf("%*sLDR(", padding, "");
+      PrintTwoAddress(instr->mov.src, instr->mov.dst);
+      return;
+    case STR:
+      printf("%*sSTR(", padding, "");
+      PrintTwoAddress(instr->mov.src, instr->mov.dst);
+      return;
     case MOV:
       printf("%*sMOV(", padding, "");
-      PrintOperand(instr->mov.src);
-      printf(", ");
-      PrintOperand(instr->mov.dst);
-      printf("),\n");
+      PrintTwoAddress(instr->mov.src, instr->mov.dst);
       return;
     case RET:
       printf("%*sRET,\n", padding, "");
+      return;
+    case ALLOC_STACK:
+      printf("%*sAllocStack(%d)\n", padding, "", instr->alloc_stack.size);
+      return;
+    case DEALLOC_STACK:
+      printf("%*sDeallocStack(%d)\n", padding, "", instr->alloc_stack.size);
+      return;
+
   }
 }
 
@@ -197,6 +219,6 @@ void PrettyPrintAssemblyAST(ArmProgram* arm_program) {
   printf("ArmProgram(\n");
   printf("  Function(\n");
   PrintArmFunc(arm_program->function_def, 4);
-  printf("  )\n)\n)");
+  printf("  )\n)\n");
 }
 

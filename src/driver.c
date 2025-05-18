@@ -14,7 +14,7 @@
 #define ASSEMBLY_EXTENSION 'S'
 
 // 16 pages, will mess with this eventually.
-#define DEFAULT_MEM 4096 * 16
+#define DEFAULT_MEM (4096 * 16)
 
 void ChangeFileExtension(char *out_file, char extension) {
   while (*out_file != '\0') {
@@ -88,6 +88,13 @@ void InternalCompile(char *file_name, Mode mode) {
 
   // Phase 4: Assembly Generation
   ArmProgram* arm_program = TranslateTacky(&arena, tacky_program);
+  PrettyPrintAssemblyAST(arm_program);
+  Arena scratch = allocate_arena(DEFAULT_MEM);
+  //scratch.next_ptr += 10;
+  ReplacePseudoRegisters(&scratch, arm_program);
+  release(&scratch);
+  PrettyPrintAssemblyAST(arm_program);
+  InstructionFixUp(&arena, arm_program);
   PrettyPrintAssemblyAST(arm_program);
   char* s_file = strdup(file_name);
   ChangeFileExtension(s_file, ASSEMBLY_EXTENSION);
