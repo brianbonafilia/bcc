@@ -11,9 +11,12 @@
  * AST definition
  *  program = (function_definition)
  *  function_definition(identifier, instruction* body)
- *  instruction = Return(val) | Unary(unary_operator, val src, val dst)
+ *  instruction = Return(val)
+ *    | Unary(unary_operator, val src, val dst)
+ *    | Binary(binary_operator, val left, val right, val dst)
  *  val = Constant(int) | Var(identifier)
  *  unary_operator = Complement | Negate
+ *  binary_operator = Add | Subtract | Multiply | Divide | Remainder
  * 
  */
 
@@ -30,6 +33,14 @@ typedef enum {
   TACKY_NEGATE
 } TackyUnaryOp;
 
+typedef enum {
+  TACKY_ADD,
+  TACKY_SUBTRACT,
+  TACKY_MULTIPLY,
+  TACKY_DIVIDE,
+  TACKY_REMAINDER,
+} TackyBinaryOp;
+
 typedef struct {
   TackyValType type;
   union {
@@ -44,9 +55,17 @@ typedef struct {
   TackyVal dst;  
 } TackyUnary;
 
+typedef struct {
+  TackyBinaryOp op;
+  TackyVal left;
+  TackyVal right;
+  TackyVal dst;
+} TackyBinary;
+
 typedef enum {
   TACKY_RETURN,
   TACKY_UNARY,
+  TACKY_BINARY,
 } TackyInstrType;
 
 typedef struct {
@@ -54,6 +73,7 @@ typedef struct {
   union {
     TackyVal return_val;
     TackyUnary unary;
+    TackyBinary binary;
   };
 } TackyInstruction;
 

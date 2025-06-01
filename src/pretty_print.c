@@ -7,6 +7,30 @@
 
 void PrintExpression(Exp* exp, int padding);
 
+void PrintBinary(BinaryExp exp, int padding) {
+  char* op;
+  switch (exp.op) {
+    case ADD:
+      op = "Add";
+      break;
+    case MULTIPLY:
+      op = "Multiply";
+      break;
+    case DIVIDE:
+      op = "Divide";
+      break;
+    case REMAINDER:
+      op = "remainder";
+      break;
+    case SUBTRACT:
+      op = "subtract";
+      break;
+  }
+  printf("%*s%s, \n", padding, "", op);
+  PrintExpression(exp.left, padding);
+  PrintExpression(exp.right, padding);
+}
+
 void PrintUnary(UnaryExp unary_exp, int padding) {
   char* op;
   switch (unary_exp.op_type) {
@@ -21,7 +45,7 @@ void PrintUnary(UnaryExp unary_exp, int padding) {
 }
 
 void PrintExpression(Exp* exp, int padding) {
-  switch(exp->type) {
+  switch (exp->type) {
     case eConst:
       printf("%*sConstant(%d)\n", padding, "", exp->const_val);
       return;
@@ -29,7 +53,13 @@ void PrintExpression(Exp* exp, int padding) {
       printf("%*sUnary(\n", padding, "");
       PrintUnary(exp->unary_exp, padding + 2);
       printf("%*s)\n", padding, "");
+      return;
     }
+    case eBinaryExp:
+      printf("%*sBinary(\n", padding, "");
+      PrintBinary(exp->binary_exp, padding + 2);
+      printf("%*s)\n", padding, "");
+      return;
   }
 }
 
@@ -63,7 +93,7 @@ void PrintTackyVal(TackyVal val) {
 }
 
 void PrintTackyReturn(TackyVal val, int padding) {
-  switch(val.type) {
+  switch (val.type) {
     case TACKY_CONST:
       printf("%*sReturn(%d),\n", padding, "", val.const_val);
       return;
@@ -88,14 +118,44 @@ void PrintTackyUnary(TackyUnary unary, int padding) {
   printf("),\n");
 }
 
+void PrintTackyBinary(TackyBinary binary, int padding) {
+  char* op;
+  switch (binary.op) {
+    case TACKY_ADD:
+      op = "Add";
+      break;
+    case TACKY_SUBTRACT:
+      op = "Subtract";
+      break;
+    case TACKY_MULTIPLY:
+      op = "Multiply";
+      break;
+    case TACKY_DIVIDE:
+      op = "Divide";
+      break;
+    case TACKY_REMAINDER:
+      op = "Remainder";
+      break;
+  }
+  printf("%*sBinary(%s, ", padding, "", op);
+  PrintTackyVal(binary.left);
+  printf(", ");
+  PrintTackyVal(binary.right);
+  printf(", ");
+  PrintTackyVal(binary.dst);
+  printf("),\n");
+}
+
 void PrintTackyInstruction(TackyInstruction* instruction, int padding) {
-  switch(instruction->type) {
+  switch (instruction->type) {
     case TACKY_RETURN:
       PrintTackyReturn(instruction->return_val, padding);
       return;
     case TACKY_UNARY:
       PrintTackyUnary(instruction->unary, padding);
       return;
+    case TACKY_BINARY:
+      PrintTackyBinary(instruction->binary, padding);
   }
 }
 
@@ -118,7 +178,7 @@ void PrettyPrintTacky(TackyProgram* tacky_program) {
 }
 
 void PrintRegister(Register reg) {
-  switch(reg) {
+  switch (reg) {
     case W0:
       printf("W0");
       return;
@@ -127,6 +187,9 @@ void PrintRegister(Register reg) {
       return;
     case W11:
       printf("W11");
+      return;
+    case W12:
+      printf("W12");
       return;
   }
 }
@@ -149,12 +212,29 @@ void PrintOperand(Operand op) {
 }
 
 void PrintArmUnaryOp(UnaryOperator op) {
-  switch(op) {
+  switch (op) {
     case NEG:
       printf("NEG");
       return;
     case NOT:
       printf("NOT");
+      return;
+  }
+}
+
+void PrintArmBinaryOp(BinaryOperator op) {
+  switch (op) {
+    case A_ADD:
+      printf("ADD");
+      return;
+    case A_SUBTRACT:
+      printf("SUB");
+      return;
+    case A_MULTIPLY:
+      printf("MUL");
+      return;
+    case A_DIVIDE:
+      printf("DIV");
       return;
   }
 }
@@ -167,6 +247,16 @@ void PrintArmUnary(ArmUnary unary, int padding) {
   printf(")\n");
 }
 
+void PrintArmBinary(ArmBinary binary, int padding) {
+  printf("%*sBinary(", padding, "");
+  PrintArmBinaryOp(binary.op);
+  printf(", ");
+  PrintRegister(binary.left);
+  printf(", ");
+  PrintRegister(binary.right);
+  printf(")\n");
+}
+
 void PrintTwoAddress(Operand src, Operand dst) {
   PrintOperand(src);
   printf(", ");
@@ -175,10 +265,13 @@ void PrintTwoAddress(Operand src, Operand dst) {
 }
 
 void PrintArmInstruction(Instruction* instr, int padding) {
-  switch(instr->type) {
+  switch (instr->type) {
     case UNARY:
-     PrintArmUnary(instr->unary, padding);
-     return;
+      PrintArmUnary(instr->unary, padding);
+      return;
+    case BINARY:
+      PrintArmBinary(instr->binary, padding);
+      return;
     case LDR:
       printf("%*sLDR(", padding, "");
       PrintTwoAddress(instr->mov.src, instr->mov.dst);

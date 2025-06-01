@@ -114,6 +114,39 @@ Token NextToken(FILE *fp) {
       ungetc(c, fp);
       result.type = tMinus;
       return result;
+    case '+':
+      c = fgetc(fp);
+      if (c == '+') {
+        result.type = tInvalidToken;
+        strcpy("++", result.value);
+        return result;
+      }
+      ungetc(c, fp);
+      result.type = tPlus;
+      return result;
+    case '/':
+      c = fgetc(fp);
+      if (c == '/') {
+        result.type = tInvalidToken;
+        strcpy("//", result.value);
+        return result;
+      }
+      ungetc(c, fp);
+      result.type = tForSlash;
+      return result;
+    case '*':
+      c = fgetc(fp);
+      if (c == '*') {
+        result.type = tInvalidToken;
+        strcpy("**", result.value);
+        return result;
+      }
+      ungetc(c, fp);
+      result.type = tAsterik;
+      return result;
+    case '%':
+      result.type = tModulo;
+      return result;
     case 'a' ... 'z':
     case 'A' ... 'Z':
       ungetc(c, fp);
@@ -149,6 +182,6 @@ Token DequeueToken(TokenList *token_list) {
   return *token_list->tokens++;
 }
 
-const char *TokenTypeStr(TokenType type) {
+const char* TokenTypeStr(TokenType type) {
   return TypeStr[type];
 }

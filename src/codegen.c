@@ -27,6 +27,8 @@ void ToArmInstruction(Arena* arena, Statement* s, ArmFunction* f) {
 
 void ToArmFunction(Arena* arena, Program* program, ArmProgram* arm_program) {
   arm_program->function_def = arena_alloc(arena, sizeof(ArmFunction));
+  // explicitly set to null to signify empty list
+  arm_program->function_def->instructions = NULL;
   arm_program->function_def->name = program->function->name;
   Statement* statement = program->function->statement;
   ToArmInstruction(arena, statement, arm_program->function_def);
@@ -39,11 +41,17 @@ ArmProgram* Translate(Arena* arena, Program* program) {
 }
 
 void AllocInstr(Arena* arena, ArmFunction* arm_func) {
-  if (arm_func->length == 0) {
+  if (arm_func->instructions == NULL) {
     arm_func->instructions = arena_alloc(arena, sizeof(Instruction));
     return;
   }
   arena_alloc(arena, sizeof(Instruction));
+}
+
+void AllocNumInstr(Arena* arena, ArmFunction* af, int num) {
+  for (int i = 0; i < num; i++) {
+    AllocInstr(arena, af);
+  }
 }
 
 Operand TackyValToArmVal(TackyVal val) {
@@ -70,6 +78,87 @@ UnaryOperator TackyUnaryOpToArm(TackyUnaryOp op) {
   }
 }
 
+BinaryOperator ToArmBinaryOp(TackyBinaryOp op) {
+  switch (op) {
+    case TACKY_DIVIDE:
+      return A_DIVIDE;
+    case TACKY_REMAINDER:
+      fprintf(stderr, "Unexpected binary op, remainder found");
+      exit(2);
+    case TACKY_MULTIPLY:
+      return A_MULTIPLY;
+    case TACKY_SUBTRACT:
+      return A_SUBTRACT;
+    case TACKY_ADD:
+      return A_ADD;
+  }
+}
+
+void AppendArmUnary(Arena* arena, ArmFunction* af, TackyInstruction ti) {
+  AllocInstr(arena, af);
+  AllocInstr(arena, af);
+  AllocInstr(arena, af);
+  Mov mov;
+  mov.src = TackyValToArmVal(ti.unary.src);
+  mov.dst = (Operand) {.type = REGISTER, .reg = W11};
+  af->instructions[af->length++] = (Instruction) {
+      .type = MOV,
+      .mov = mov
+  };
+  ArmUnary unary = (ArmUnary) {
+      .op = TackyUnaryOpToArm(ti.unary.op),
+      .reg = W11
+  };
+  af->instructions[af->length++] = (Instruction) {
+      .type = UNARY,
+      .unary = unary
+  };
+  mov.src = (Operand) {.type = REGISTER, .reg = W11};
+  mov.dst = TackyValToArmVal(ti.unary.dst);
+  af->instructions[af->length++] = (Instruction) {
+      .type = MOV,
+      .mov = mov
+  };
+}
+
+void AppendArmRemainder(Arena* arena, ArmFunction* af, TackyInstruction ti) {
+
+}
+
+void AppendArmBinary(Arena* arena, ArmFunction* af, TackyInstruction ti) {
+  if (ti.binary.op == TACKY_REMAINDER) {
+    AppendArmRemainder(arena, af, ti);
+  }
+  AllocNumInstr(arena, af, 4);
+  Mov mov;
+  mov.src = TackyValToArmVal(ti.binary.left);
+  mov.dst = (Operand) {.type = REGISTER, .reg = W11};
+  af->instructions[af->length++] = (Instruction) {
+      .type = MOV,
+      .mov = mov
+  };
+  mov.src = TackyValToArmVal(ti.binary.right);
+  mov.dst.reg = W12;
+  af->instructions[af->length++] = (Instruction) {
+      .type = MOV,
+      .mov = mov
+  };
+  af->instructions[af->length++] = (Instruction) {
+    .type = BINARY,
+    .binary = (ArmBinary) {
+      .op = ToArmBinaryOp(ti.binary.op),
+      .left = W11,
+      .right = W12
+    }
+  };
+  mov.src = (Operand) {.type = REGISTER, .reg = W12};
+  mov.dst = TackyValToArmVal(ti.binary.dst);
+  af->instructions[af->length++] = (Instruction) {
+    .type = MOV,
+    .mov = mov
+  };
+}
+
 void AppendArmInstruction(Arena* arena, ArmFunction* arm_func, TackyInstruction t_instr) {
   switch (t_instr.type) {
     case TACKY_RETURN: {
@@ -87,33 +176,12 @@ void AppendArmInstruction(Arena* arena, ArmFunction* arm_func, TackyInstruction 
       };
       return;
     }
-    case TACKY_UNARY: {
-      AllocInstr(arena, arm_func);
-      AllocInstr(arena, arm_func);
-      AllocInstr(arena, arm_func);
-      Mov mov;
-      mov.src = TackyValToArmVal(t_instr.unary.src);
-      mov.dst = (Operand) {.type = REGISTER, .reg = W11};
-      arm_func->instructions[arm_func->length++] = (Instruction) {
-          .type = MOV,
-          .mov = mov
-      };
-      ArmUnary unary = (ArmUnary) {
-          .op = TackyUnaryOpToArm(t_instr.unary.op),
-          .reg = W11
-      };
-      arm_func->instructions[arm_func->length++] = (Instruction) {
-          .type = UNARY,
-          .unary = unary
-      };
-      mov.src = (Operand) {.type = REGISTER, .reg = W11};
-      mov.dst = TackyValToArmVal(t_instr.unary.dst);
-      arm_func->instructions[arm_func->length++] = (Instruction) {
-          .type = MOV,
-          .mov = mov
-      };
+    case TACKY_UNARY:
+      AppendArmUnary(arena, arm_func, t_instr);
       return;
-    }
+    case TACKY_BINARY:
+      AppendArmBinary(arena, arm_func, t_instr);
+      return;
   }
 }
 
@@ -242,6 +310,9 @@ void WriteRegister(Register reg, FILE* asm_f) {
     case W11:
       fprintf(asm_f, "W11");
       return;
+    case W12:
+      fprintf(asm_f, "W12");
+      return;
     case W10:
       fprintf(asm_f, "W10");
       return;
@@ -276,21 +347,42 @@ int RoundStackSize(int size) {
   return size;
 }
 
-void WriteUnary(ArmUnary unary, FILE* asm_f) {
-  switch (unary.op) {
+char* ToUnaryOpStr(UnaryOperator op) {
+  switch (op) {
     case NEG:
-      fprintf(asm_f, "%*sNEG  ", ASM_PADDING, "");
-      WriteRegister(unary.reg, asm_f);
-      fprintf(asm_f, ",    ");
-      WriteRegister(unary.reg, asm_f);
-      return;
+      return "NEG";
     case NOT:
-      fprintf(asm_f, "%*sMVN  ", ASM_PADDING, "");
-      WriteRegister(unary.reg, asm_f);
-      fprintf(asm_f, ",    ");
-      WriteRegister(unary.reg, asm_f);
-      return;
+      return "MVN";
   }
+}
+
+void WriteUnary(ArmUnary unary, FILE* asm_f) {
+    fprintf(asm_f, "%*s%s  ", ASM_PADDING, "", ToUnaryOpStr(unary.op));
+    WriteRegister(unary.reg, asm_f);
+    fprintf(asm_f, ",    ");
+    WriteRegister(unary.reg, asm_f);
+}
+
+char* ToBinaryOpStr(BinaryOperator op) {
+  switch (op) {
+    case A_ADD:
+      return "ADD";
+    case A_SUBTRACT:
+      return "SUB";
+    case A_DIVIDE:
+      return "SDIV";
+    case A_MULTIPLY:
+      return "MUL";
+  }
+}
+
+void WriteBinary(ArmBinary binary, FILE* asm_f) {
+  fprintf(asm_f, "%*s%s  ", ASM_PADDING, "", ToBinaryOpStr(binary.op));
+  WriteRegister(binary.right, asm_f);
+  fprintf(asm_f, ",    ");
+  WriteRegister(binary.left, asm_f);
+  fprintf(asm_f, ",    ");
+  WriteRegister(binary.right, asm_f);
 }
 
 void WriteInstruction(Instruction* instruction, FILE* asm_f) {
@@ -315,6 +407,10 @@ void WriteInstruction(Instruction* instruction, FILE* asm_f) {
       return;
     case UNARY:
       WriteUnary(instruction->unary, asm_f);
+      fprintf(asm_f, "\n");
+      return;
+    case BINARY:
+      WriteBinary(instruction->binary, asm_f);
       fprintf(asm_f, "\n");
       return;
     case RET:

@@ -5,7 +5,6 @@
 
 int tmp_count = 0;
 
-
 // Assumes no allocations concurrently.
 void AppendInstruction(Arena* arena, TackyFunction* tf, TackyInstruction instr) {
   if (tf->instr_length == 0) {
@@ -18,7 +17,7 @@ void AppendInstruction(Arena* arena, TackyFunction* tf, TackyInstruction instr) 
 }
 
 TackyUnaryOp ConvertOp(UnaryOp op) {
-  switch(op) {
+  switch (op) {
     case COMPLEMENT:
       return TACKY_COMPLEMENT;
     case NEGATE:
@@ -26,8 +25,23 @@ TackyUnaryOp ConvertOp(UnaryOp op) {
   }
 }
 
+TackyBinaryOp ConvertBinaryOp(BinaryOp op) {
+  switch (op) {
+    case ADD:
+      return TACKY_ADD;
+    case SUBTRACT:
+      return TACKY_SUBTRACT;
+    case MULTIPLY:
+      return TACKY_MULTIPLY;
+    case DIVIDE:
+      return TACKY_DIVIDE;
+    case REMAINDER:
+      return TACKY_REMAINDER;
+  }
+}
+
 TackyVal EmitTacky(Arena* arena, Exp* exp, TackyFunction* tf) {
-  switch(exp->type) {
+  switch (exp->type) {
     case eConst: {
       TackyVal const_val = {.type = TACKY_CONST, .const_val =  exp->const_val};
       return const_val;
@@ -42,6 +56,22 @@ TackyVal EmitTacky(Arena* arena, Exp* exp, TackyFunction* tf) {
           .unary.op = op,
           .unary.src = src,
           .unary.dst = dst
+      };
+      AppendInstruction(arena, tf, t_instr);
+      return dst;
+    }
+    case eBinaryExp: {
+      TackyVal left = EmitTacky(arena, exp->binary_exp.left, tf);
+      TackyVal right = EmitTacky(arena, exp->binary_exp.right, tf);
+      TackyVal dst = {.type = TACKY_VAR};
+      sprintf(dst.identifier, "tmp.%d", tmp_count++);
+      TackyBinaryOp op = ConvertBinaryOp(exp->binary_exp.op);
+      TackyInstruction t_instr = {
+          .type = TACKY_BINARY,
+          .binary.op = op,
+          .binary.left = left,
+          .binary.right = right,
+          .binary.dst = dst,
       };
       AppendInstruction(arena, tf, t_instr);
       return dst;

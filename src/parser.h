@@ -5,7 +5,8 @@
  * <program> ::= <function>
  * <function> ::= "int" <identifier> "(" "void" ")" "{" <statement> "}"
  * <statement> ::= "return" <exp> ";"
- * <exp> ::= <int> | <unop> <exp> | "(" <exp> ")"
+ * <exp> ::= <factor> | <exp> <binop> <exp>
+ * <factor> ::= <int> | <unop> <exp> | "(" <exp> ")"
  * <unop> ::= "-" | "~"
  * <identifier> ::= ? identifier ?
  * <int> ::= ? constant ?
@@ -24,13 +25,22 @@
 
 typedef enum {
   eConst,
-  eUnaryExp
+  eUnaryExp,
+  eBinaryExp
 } ExpType;
 
 typedef enum {
   COMPLEMENT,
   NEGATE
 } UnaryOp;
+
+typedef enum {
+  ADD,
+  SUBTRACT,
+  MULTIPLY,
+  DIVIDE,
+  REMAINDER
+} BinaryOp;
 
 typedef enum {
   S_RETURN
@@ -42,11 +52,18 @@ typedef struct {
   Exp* exp;
 } UnaryExp;
 
+typedef struct {
+  BinaryOp op;
+  Exp* left;
+  Exp* right;
+} BinaryExp;
+
 struct Exp {
   ExpType type;
   union {
     int const_val;
     UnaryExp unary_exp;
+    BinaryExp binary_exp;
   };
 };
 

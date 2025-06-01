@@ -26,6 +26,7 @@ typedef enum {
   LDR,
   RET,
   UNARY,
+  BINARY,
   ALLOC_STACK,
   DEALLOC_STACK
 } InstructionType;
@@ -33,7 +34,8 @@ typedef enum {
 typedef enum {
   W0,
   W10,
-  W11
+  W11,
+  W12
 } Register;
 
 typedef enum {
@@ -67,10 +69,27 @@ typedef enum {
   NEG
 } UnaryOperator;
 
+// remainder excluded, to be done in three steps...
+// Divide -> multiply -> subtract
+typedef enum {
+  A_ADD,
+  A_SUBTRACT,
+  A_DIVIDE,
+  A_MULTIPLY,
+} BinaryOperator;
+
+// no DST as we just output to input register.
 typedef struct {
   UnaryOperator op;
   Register reg;
 } ArmUnary;
+
+// no dst register, outputs to right register.
+typedef struct {
+  BinaryOperator op;
+  Register left;
+  Register right;
+} ArmBinary;
 
 typedef struct {
   int size;
@@ -81,6 +100,7 @@ typedef struct {
   union {
     Mov mov;
     ArmUnary unary;
+    ArmBinary binary;
     AllocStack alloc_stack;
   };
 } Instruction;
