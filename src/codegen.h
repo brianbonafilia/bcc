@@ -78,6 +78,11 @@ typedef enum {
   A_SUBTRACT,
   A_DIVIDE,
   A_MULTIPLY,
+  A_OR,
+  A_XOR,
+  A_AND,
+  A_RSHIFT,
+  A_LSHIFT,
 } BinaryOperator;
 
 // no DST as we just output to input register.

@@ -39,7 +39,12 @@ typedef enum {
   SUBTRACT,
   MULTIPLY,
   DIVIDE,
-  REMAINDER
+  REMAINDER,
+  OR,
+  XOR,
+  AND,
+  RIGHT_SHIFT,
+  LEFT_SHIFT
 } BinaryOp;
 
 typedef enum {

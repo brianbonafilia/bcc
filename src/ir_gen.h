@@ -39,6 +39,11 @@ typedef enum {
   TACKY_MULTIPLY,
   TACKY_DIVIDE,
   TACKY_REMAINDER,
+  TACKY_OR,
+  TACKY_AND,
+  TACKY_XOR,
+  TACKY_RSHIFT,
+  TACKY_LSHIFT,
 } TackyBinaryOp;
 
 typedef struct {

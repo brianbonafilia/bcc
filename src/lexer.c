@@ -147,6 +147,51 @@ Token NextToken(FILE *fp) {
     case '%':
       result.type = tModulo;
       return result;
+    case '|': {
+      c = fgetc(fp);
+      if (c == '|') {
+        result.type = tInvalidToken;
+        strcpy("||", result.value);
+        return result;
+      }
+      ungetc(c, fp);
+      result.type = tOr;
+      return result;
+    }
+    case '&': {
+      c = fgetc(fp);
+      if (c == '&') {
+        result.type = tInvalidToken;
+        strcpy("&&", result.value);
+        return result;
+      }
+      ungetc(c, fp);
+      result.type = tAnd;
+      return result;
+    }
+    case '^':
+      result.type = tXor;
+      return result;
+    case '<': {
+      c = fgetc(fp);
+      if (c != '<') {
+        result.type = tInvalidToken;
+        strcpy("<", result.value);
+        return result;
+      }
+      result.type = tLeftShift;
+      return result;
+    }
+    case '>': {
+      c = fgetc(fp);
+      if (c != '>') {
+        result.type = tInvalidToken;
+        strcpy(">", result.value);
+        return result;
+      }
+      result.type = tRightShift;
+      return result;
+    }
     case 'a' ... 'z':
     case 'A' ... 'Z':
       ungetc(c, fp);

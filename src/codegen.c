@@ -57,6 +57,16 @@ BinaryOperator ToArmBinaryOp(TackyBinaryOp op) {
       return A_SUBTRACT;
     case TACKY_ADD:
       return A_ADD;
+    case TACKY_OR:
+      return A_OR;
+    case TACKY_XOR:
+      return A_XOR;
+    case TACKY_AND:
+      return A_AND;
+    case TACKY_RSHIFT:
+      return A_RSHIFT;
+    case TACKY_LSHIFT:
+      return A_LSHIFT;
   }
 }
 
@@ -384,6 +394,16 @@ char* ToBinaryOpStr(BinaryOperator op) {
       return "SDIV";
     case A_MULTIPLY:
       return "MUL";
+    case A_OR:
+      return "ORR";
+    case A_XOR:
+      return "EOR";
+    case A_AND:
+      return "AND";
+    case A_LSHIFT:
+      return "LSL";
+    case A_RSHIFT:
+      return "ASR";
   }
 }
 

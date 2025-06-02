@@ -23,8 +23,25 @@ void PrintBinary(BinaryExp exp, int padding) {
       op = "remainder";
       break;
     case SUBTRACT:
-      op = "subtract";
+      op = "Subtract";
       break;
+    case OR:
+      op = "Or";
+      break;
+    case AND:
+      op= "And";
+      break;
+    case XOR:
+      op = "Xor";
+      break;
+    case RIGHT_SHIFT:
+      op = "RightShift";
+      break;
+    case LEFT_SHIFT:
+      op = "LeftShift";
+      break;
+    default:
+      fprintf(stderr, "uh oh, unexpected binary op, code:%d", exp.op);
   }
   printf("%*s%s, \n", padding, "", op);
   PrintExpression(exp.left, padding);
@@ -118,25 +135,34 @@ void PrintTackyUnary(TackyUnary unary, int padding) {
   printf("),\n");
 }
 
-void PrintTackyBinary(TackyBinary binary, int padding) {
-  char* op;
-  switch (binary.op) {
+char* GetBinaryOpStr(TackyBinaryOp op) {
+  switch (op) {
     case TACKY_ADD:
-      op = "Add";
-      break;
+      return "Add";
     case TACKY_SUBTRACT:
-      op = "Subtract";
-      break;
+      return "Subtract";
     case TACKY_MULTIPLY:
-      op = "Multiply";
-      break;
+      return "Multiply";
     case TACKY_DIVIDE:
-      op = "Divide";
-      break;
+      return "Divide";
     case TACKY_REMAINDER:
-      op = "Remainder";
-      break;
+      return "Remainder";
+    case TACKY_OR:
+      return "Or";
+    case TACKY_AND:
+      return "And";
+    case TACKY_XOR:
+      return "Xor";
+    case TACKY_LSHIFT:
+      return "LShift";
+    case TACKY_RSHIFT:
+      return "RShift";
   }
+}
+
+void PrintTackyBinary(TackyBinary binary, int padding) {
+  char* op = GetBinaryOpStr(binary.op);
+
   printf("%*sBinary(%s, ", padding, "", op);
   PrintTackyVal(binary.left);
   printf(", ");
@@ -190,6 +216,9 @@ void PrintRegister(Register reg) {
       return;
     case W12:
       printf("W12");
+      return;
+    case W13:
+      printf("W13");
       return;
   }
 }
@@ -267,7 +296,7 @@ void PrintTwoAddress(Operand src, Operand dst) {
 }
 
 void PrintArmMsub(ArmMsub arm_msub, int padding) {
-  printf("%*Msub(", padding, "");
+  printf("%*sMsub(", padding, "");
   PrintRegister(arm_msub.left);
   printf(", ");
   PrintRegister(arm_msub.right);

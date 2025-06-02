@@ -68,6 +68,16 @@ BinaryOp ParseBinop(Token token) {
       return DIVIDE;
     case tModulo:
       return REMAINDER;
+    case tOr:
+      return OR;
+    case tAnd:
+      return AND;
+    case tXor:
+      return XOR;
+    case tRightShift:
+      return RIGHT_SHIFT;
+    case tLeftShift:
+      return LEFT_SHIFT;
     default:
       fprintf(stderr, "Expected +,-,/,%%, or got type: %s\n",
               TokenTypeStr(token.type));
@@ -83,6 +93,11 @@ bool IsBinaryOp(TokenType t) {
     case tAsterik:
     case tForSlash:
     case tModulo:
+    case tOr:
+    case tAnd:
+    case tXor:
+    case tRightShift:
+    case tLeftShift:
       return true;
     default:
       return false;
@@ -97,6 +112,15 @@ int Precedence(TokenType t) {
     case tPlus:
     case tMinus:
       return 45;
+    case tRightShift:
+    case tLeftShift:
+      return 40;
+    case tAnd:
+      return 30;
+    case tXor:
+      return 25;
+    case tOr:
+      return 20;
     default:
       fprintf(stderr, "Expected +,-,/,%%, or * got type: %s\n",
               TokenTypeStr(t));

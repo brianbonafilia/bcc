@@ -37,6 +37,18 @@ TackyBinaryOp ConvertBinaryOp(BinaryOp op) {
       return TACKY_DIVIDE;
     case REMAINDER:
       return TACKY_REMAINDER;
+    case OR:
+      return TACKY_OR;
+    case XOR:
+      return TACKY_XOR;
+    case AND:
+      return TACKY_AND;
+    case RIGHT_SHIFT:
+      return TACKY_RSHIFT;
+    case LEFT_SHIFT:
+      return TACKY_LSHIFT;
+    default:
+      fprintf(stderr, "Unexpected binary op type: %d", op);
   }
 }
 
