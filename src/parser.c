@@ -110,7 +110,7 @@ Exp* ParseExp(Arena* arena, TokenList* list, int min_precedence) {
   while (IsBinaryOp(next_token->type) &&
       Precedence(next_token->type) >= min_precedence) {
     BinaryOp op = ParseBinop(DequeueToken(list));
-    Exp* right = ParseExp(arena, list, Precedence(next_token->type));
+    Exp* right = ParseExp(arena, list, Precedence(next_token->type) + 1);
     Exp* binexp = arena_alloc(arena, sizeof(Exp));
     *binexp = (Exp) {
         .type = eBinaryExp,

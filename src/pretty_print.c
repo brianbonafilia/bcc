@@ -254,6 +254,8 @@ void PrintArmBinary(ArmBinary binary, int padding) {
   PrintRegister(binary.left);
   printf(", ");
   PrintRegister(binary.right);
+  printf(", ");
+  PrintRegister(binary.dst);
   printf(")\n");
 }
 
@@ -264,6 +266,18 @@ void PrintTwoAddress(Operand src, Operand dst) {
   printf("),\n");
 }
 
+void PrintArmMsub(ArmMsub arm_msub, int padding) {
+  printf("%*Msub(", padding, "");
+  PrintRegister(arm_msub.left);
+  printf(", ");
+  PrintRegister(arm_msub.right);
+  printf(", ");
+  PrintRegister(arm_msub.m);
+  printf(", ");
+  PrintRegister(arm_msub.dst);
+  printf(")\n");
+}
+
 void PrintArmInstruction(Instruction* instr, int padding) {
   switch (instr->type) {
     case UNARY:
@@ -271,6 +285,9 @@ void PrintArmInstruction(Instruction* instr, int padding) {
       return;
     case BINARY:
       PrintArmBinary(instr->binary, padding);
+      return;
+    case MSUB:
+      PrintArmMsub(instr->msub, padding);
       return;
     case LDR:
       printf("%*sLDR(", padding, "");

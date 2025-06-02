@@ -27,6 +27,7 @@ typedef enum {
   RET,
   UNARY,
   BINARY,
+  MSUB,
   ALLOC_STACK,
   DEALLOC_STACK
 } InstructionType;
@@ -35,7 +36,8 @@ typedef enum {
   W0,
   W10,
   W11,
-  W12
+  W12,
+  W13,
 } Register;
 
 typedef enum {
@@ -89,7 +91,18 @@ typedef struct {
   BinaryOperator op;
   Register left;
   Register right;
+  Register dst;
 } ArmBinary;
+
+typedef struct {
+  // the Minuend
+  Register left;
+  // the Subtrahend
+  Register right;
+  // multiplies the subtrahend
+  Register m;
+  Register dst;
+} ArmMsub;
 
 typedef struct {
   int size;
@@ -101,6 +114,7 @@ typedef struct {
     Mov mov;
     ArmUnary unary;
     ArmBinary binary;
+    ArmMsub msub;
     AllocStack alloc_stack;
   };
 } Instruction;
@@ -115,7 +129,6 @@ typedef struct {
   ArmFunction* function_def;
 } ArmProgram;
 
-ArmProgram* Translate(Arena* arena, Program* program);
 ArmProgram* TranslateTacky(Arena* arena, TackyProgram* tacky_program);
 void ReplacePseudoRegisters(Arena* scratch, ArmProgram* tacky_program);
 void InstructionFixUp(Arena* arena, ArmProgram* tacky_program);

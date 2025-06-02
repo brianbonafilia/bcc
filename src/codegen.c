@@ -6,40 +6,6 @@
 #define ASM_PADDING 4
 #define VAR_SIZE 8
 
-void ToArmInstruction(Arena* arena, Statement* s, ArmFunction* f) {
-  switch (s->exp->type) {
-    case eConst:
-      f->instructions = arena_alloc(arena, sizeof(Instruction) * 2);
-      f->instructions[0] = (Instruction) {
-          .type = MOV,
-          .mov = {
-              .src = {.type = IMM, .imm = s->exp->const_val},
-              .dst = {.type = REGISTER}
-          }
-      };
-      f->instructions[1] = (Instruction) {
-          .type = RET
-      };
-      f->length = 2;
-      return;
-  }
-}
-
-void ToArmFunction(Arena* arena, Program* program, ArmProgram* arm_program) {
-  arm_program->function_def = arena_alloc(arena, sizeof(ArmFunction));
-  // explicitly set to null to signify empty list
-  arm_program->function_def->instructions = NULL;
-  arm_program->function_def->name = program->function->name;
-  Statement* statement = program->function->statement;
-  ToArmInstruction(arena, statement, arm_program->function_def);
-}
-
-ArmProgram* Translate(Arena* arena, Program* program) {
-  ArmProgram* arm_program = arena_alloc(arena, sizeof(ArmProgram));
-  ToArmFunction(arena, program, arm_program);
-  return arm_program;
-}
-
 void AllocInstr(Arena* arena, ArmFunction* arm_func) {
   if (arm_func->instructions == NULL) {
     arm_func->instructions = arena_alloc(arena, sizeof(Instruction));
@@ -122,12 +88,53 @@ void AppendArmUnary(Arena* arena, ArmFunction* af, TackyInstruction ti) {
 }
 
 void AppendArmRemainder(Arena* arena, ArmFunction* af, TackyInstruction ti) {
-
+  AllocNumInstr(arena, af, 5);
+  Mov mov;
+  mov.src = TackyValToArmVal(ti.binary.left);
+  mov.dst = (Operand) {
+    .type = REGISTER,
+    .reg = W11
+  };
+  af->instructions[af->length++] = (Instruction) {
+    .type = MOV,
+    .mov = mov
+  };
+  mov.src = TackyValToArmVal(ti.binary.right);
+  mov.dst.reg = W12;
+  af->instructions[af->length++] = (Instruction) {
+    .type = MOV,
+    .mov = mov
+  };
+  af->instructions[af->length++] = (Instruction) {
+      .type = BINARY,
+      .binary = (ArmBinary) {
+          .op = A_DIVIDE,
+          .left = W11,
+          .right = W12,
+          .dst = W13
+      }
+  };
+  af->instructions[af->length++] = (Instruction) {
+    .type = MSUB,
+    .msub = (ArmMsub) {
+      .dst = W13,
+      .left = W11,
+      .right = W12,
+      .m = W13
+    }
+  };
+  mov.src = (Operand) {.type = REGISTER, .reg = W13};
+  mov.dst = TackyValToArmVal(ti.binary.dst);
+  af->instructions[af->length++] = (Instruction) {
+      .type = MOV,
+      .mov = mov
+  };
 }
 
 void AppendArmBinary(Arena* arena, ArmFunction* af, TackyInstruction ti) {
   if (ti.binary.op == TACKY_REMAINDER) {
     AppendArmRemainder(arena, af, ti);
+    return;
   }
   AllocNumInstr(arena, af, 4);
   Mov mov;
@@ -148,7 +155,8 @@ void AppendArmBinary(Arena* arena, ArmFunction* af, TackyInstruction ti) {
     .binary = (ArmBinary) {
       .op = ToArmBinaryOp(ti.binary.op),
       .left = W11,
-      .right = W12
+      .right = W12,
+      .dst = W12
     }
   };
   mov.src = (Operand) {.type = REGISTER, .reg = W12};
@@ -211,7 +219,7 @@ int GetVarNum(Arena* scratch, char** identifiers, int* size, char* match) {
     fprintf(stderr, "too many variables in a function");
     exit(2);
   }
-  char* copy = arena_alloc(scratch, sizeof(char) * strlen(match));
+  char* copy = arena_alloc(scratch, sizeof(char) * strlen(match) + 1);
   identifiers[(*size)++] = strcpy(copy, match);
   return *size - 1;
 }
@@ -313,6 +321,9 @@ void WriteRegister(Register reg, FILE* asm_f) {
     case W12:
       fprintf(asm_f, "W12");
       return;
+    case W13:
+      fprintf(asm_f, "W13");
+      return;
     case W10:
       fprintf(asm_f, "W10");
       return;
@@ -378,11 +389,22 @@ char* ToBinaryOpStr(BinaryOperator op) {
 
 void WriteBinary(ArmBinary binary, FILE* asm_f) {
   fprintf(asm_f, "%*s%s  ", ASM_PADDING, "", ToBinaryOpStr(binary.op));
-  WriteRegister(binary.right, asm_f);
+  WriteRegister(binary.dst, asm_f);
   fprintf(asm_f, ",    ");
   WriteRegister(binary.left, asm_f);
   fprintf(asm_f, ",    ");
   WriteRegister(binary.right, asm_f);
+}
+
+void WriteMsub(ArmMsub msub, FILE* asm_f) {
+  fprintf(asm_f, "%*sMSUB  ", ASM_PADDING, "");
+  WriteRegister(msub.dst, asm_f);
+  fprintf(asm_f, ",    ");
+  WriteRegister(msub.right, asm_f);
+  fprintf(asm_f, ",    ");
+  WriteRegister(msub.m, asm_f);
+  fprintf(asm_f, ",    ");
+  WriteRegister(msub.left, asm_f);
 }
 
 void WriteInstruction(Instruction* instruction, FILE* asm_f) {
@@ -411,6 +433,10 @@ void WriteInstruction(Instruction* instruction, FILE* asm_f) {
       return;
     case BINARY:
       WriteBinary(instruction->binary, asm_f);
+      fprintf(asm_f, "\n");
+      return;
+    case MSUB:
+      WriteMsub(instruction->msub, asm_f);
       fprintf(asm_f, "\n");
       return;
     case RET:
