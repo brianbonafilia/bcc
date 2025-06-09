@@ -147,11 +147,29 @@ Token NextToken(FILE *fp) {
     case '%':
       result.type = tModulo;
       return result;
+    case '!':
+      c = fgetc(fp);
+      if (c == '=') {
+        result.type = tNotEqual;
+        return result;
+      }
+      ungetc(c, fp);
+      result.type = tLogicalNot;
+      return result;
+    case '=':
+      c = fgetc(fp);
+      if (c == '=') {
+        result.type = tEqual;
+        return result;
+      }
+      result.type = tInvalidToken;
+      result.value[0] = '=';
+      result.value[1] = c;
+      result.value[2] = '\0';
     case '|': {
       c = fgetc(fp);
       if (c == '|') {
-        result.type = tInvalidToken;
-        strcpy("||", result.value);
+        result.type = tLogicalOr;
         return result;
       }
       ungetc(c, fp);
@@ -161,8 +179,7 @@ Token NextToken(FILE *fp) {
     case '&': {
       c = fgetc(fp);
       if (c == '&') {
-        result.type = tInvalidToken;
-        strcpy("&&", result.value);
+        result.type = tLogicalAnd;
         return result;
       }
       ungetc(c, fp);
@@ -174,22 +191,28 @@ Token NextToken(FILE *fp) {
       return result;
     case '<': {
       c = fgetc(fp);
-      if (c != '<') {
-        result.type = tInvalidToken;
-        strcpy("<", result.value);
+      if (c == '<') {
+        result.type = tLeftShift;
+        return result;
+      } else if (c == '=') {
+        result.type = tLessOrEqual;
         return result;
       }
-      result.type = tLeftShift;
+      ungetc(c, fp);
+      result.type = tLessThan;
       return result;
     }
     case '>': {
       c = fgetc(fp);
-      if (c != '>') {
-        result.type = tInvalidToken;
-        strcpy(">", result.value);
+      if (c == '>') {
+        result.type = tRightShift;
+        return result;
+      } else if (c == '=') {
+        result.type = tGreaterOrEqual;
         return result;
       }
-      result.type = tRightShift;
+      ungetc(c, fp);
+      result.type = tGreaterThan;
       return result;
     }
     case 'a' ... 'z':

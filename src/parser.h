@@ -7,7 +7,10 @@
  * <statement> ::= "return" <exp> ";"
  * <exp> ::= <factor> | <exp> <binop> <exp>
  * <factor> ::= <int> | <unop> <exp> | "(" <exp> ")"
- * <unop> ::= "-" | "~"
+ * <unop> ::= "-" | "~" | "!"
+ * <binop> ::= "-" | "-" | "*" | "/" | "%" | "&&" | "||"
+ *      | "==" | "!=" | "<" | "<=" | ">" | ">=" | "|" | "&" | "<<"
+ *      | ">>" | "^"
  * <identifier> ::= ? identifier ?
  * <int> ::= ? constant ?
  *
@@ -31,7 +34,8 @@ typedef enum {
 
 typedef enum {
   COMPLEMENT,
-  NEGATE
+  NEGATE,
+  LOGICAL_NOT,
 } UnaryOp;
 
 typedef enum {
@@ -44,7 +48,15 @@ typedef enum {
   XOR,
   AND,
   RIGHT_SHIFT,
-  LEFT_SHIFT
+  LEFT_SHIFT,
+  LOGICAL_AND,
+  LOGICAL_OR,
+  EQUAL,
+  NOT_EQUAL,
+  GREATER_THAN,
+  GREATER_OR_EQUAL,
+  LESS_THAN,
+  LESS_OR_EQUAL,
 } BinaryOp;
 
 typedef enum {

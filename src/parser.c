@@ -22,6 +22,8 @@ UnaryOp GetOp(TokenType type) {
       return COMPLEMENT;
     case tMinus:
       return NEGATE;
+    case tLogicalNot:
+      return LOGICAL_NOT;
     default:
       fprintf(stderr, "encountered bad unary op");
       exit(1);
@@ -34,6 +36,7 @@ Exp* ParseFactorInner(Arena* arena, TokenList* list) {
   switch (token.type) {
     case tTilde:
     case tMinus:
+    case tLogicalNot:
       e = arena_alloc(arena, sizeof(Exp));
       e->type = eUnaryExp;
       e->unary_exp.op_type = GetOp(token.type);
@@ -78,8 +81,24 @@ BinaryOp ParseBinop(Token token) {
       return RIGHT_SHIFT;
     case tLeftShift:
       return LEFT_SHIFT;
+    case tLogicalAnd:
+      return LOGICAL_AND;
+    case tLogicalOr:
+      return LOGICAL_OR;
+    case tEqual:
+      return EQUAL;
+    case tNotEqual:
+      return NOT_EQUAL;
+    case tLessThan:
+      return LESS_THAN;
+    case tGreaterThan:
+      return GREATER_THAN;
+    case tLessOrEqual:
+      return LESS_OR_EQUAL;
+    case tGreaterOrEqual:
+      return GREATER_OR_EQUAL;
     default:
-      fprintf(stderr, "Expected +,-,/,%%, or got type: %s\n",
+      fprintf(stderr, "Expected binary op or got type: %s\n",
               TokenTypeStr(token.type));
       exit(2);
   }
@@ -98,6 +117,14 @@ bool IsBinaryOp(TokenType t) {
     case tXor:
     case tRightShift:
     case tLeftShift:
+    case tLogicalAnd:
+    case tLogicalOr:
+    case tEqual:
+    case tNotEqual:
+    case tLessThan:
+    case tGreaterThan:
+    case tLessOrEqual:
+    case tGreaterOrEqual:
       return true;
     default:
       return false;
@@ -115,12 +142,24 @@ int Precedence(TokenType t) {
     case tRightShift:
     case tLeftShift:
       return 40;
-    case tAnd:
+    case tLessOrEqual:
+    case tLessThan:
+    case tGreaterThan:
+    case tGreaterOrEqual:
+      return 35;
+    case tEqual:
+    case tNotEqual:
       return 30;
-    case tXor:
+    case tAnd:
       return 25;
-    case tOr:
+    case tXor:
       return 20;
+    case tOr:
+      return 15;
+    case tLogicalAnd:
+      return 10;
+    case tLogicalOr:
+      return 5;
     default:
       fprintf(stderr, "Expected +,-,/,%%, or * got type: %s\n",
               TokenTypeStr(t));

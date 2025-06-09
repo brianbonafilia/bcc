@@ -7,42 +7,52 @@
 
 void PrintExpression(Exp* exp, int padding);
 
-void PrintBinary(BinaryExp exp, int padding) {
-  char* op;
-  switch (exp.op) {
+char* BinaryOpStr(BinaryOp op) {
+  switch (op) {
     case ADD:
-      op = "Add";
-      break;
+      return "Add";
     case MULTIPLY:
-      op = "Multiply";
-      break;
+      return "Multiply";
     case DIVIDE:
-      op = "Divide";
-      break;
+      return "Divide";
     case REMAINDER:
-      op = "remainder";
-      break;
+      return "remainder";
     case SUBTRACT:
-      op = "Subtract";
-      break;
+      return "Subtract";
     case OR:
-      op = "Or";
-      break;
+      return "Or";
     case AND:
-      op= "And";
-      break;
+      return "And";
     case XOR:
-      op = "Xor";
-      break;
+      return "Xor";
     case RIGHT_SHIFT:
-      op = "RightShift";
-      break;
+      return "RightShift";
     case LEFT_SHIFT:
-      op = "LeftShift";
-      break;
+      return "LeftShift";
+    case LOGICAL_AND:
+      return "LogicalAnd";
+    case LOGICAL_OR:
+      return "LogicalOr";
+    case EQUAL:
+      return "Equals";
+    case NOT_EQUAL:
+      return "NotEquals";
+    case GREATER_THAN:
+      return "GreaterThan";
+    case GREATER_OR_EQUAL:
+      return "GreaterOrEqual";
+    case LESS_THAN:
+      return "LessThan";
+    case LESS_OR_EQUAL:
+      return "LessOrEqual";
     default:
-      fprintf(stderr, "uh oh, unexpected binary op, code:%d", exp.op);
+      fprintf(stderr, "uh oh, unexpected binary op, code:%d", op);
+      exit(2);
   }
+}
+
+void PrintBinary(BinaryExp exp, int padding) {
+  char* op = BinaryOpStr(exp.op);
   printf("%*s%s, \n", padding, "", op);
   PrintExpression(exp.left, padding);
   PrintExpression(exp.right, padding);
@@ -56,6 +66,10 @@ void PrintUnary(UnaryExp unary_exp, int padding) {
       break;
     case NEGATE:
       op = "Negate";
+      break;
+    case LOGICAL_NOT:
+      op = "Not";
+      break;
   }
   printf("%*s%s,\n", padding, "", op);
   PrintExpression(unary_exp.exp, padding);
@@ -264,6 +278,21 @@ void PrintArmBinaryOp(BinaryOperator op) {
       return;
     case A_DIVIDE:
       printf("DIV");
+      return;
+    case A_OR:
+      printf("OR");
+      return;
+    case A_AND:
+      printf("AND");
+      return;
+    case A_XOR:
+      printf("XOR");
+      return;
+    case A_RSHIFT:
+      printf("ASR");
+      return;
+    case A_LSHIFT:
+      printf("LSL");
       return;
   }
 }
