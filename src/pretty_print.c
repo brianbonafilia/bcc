@@ -360,15 +360,10 @@ void PrintArmUnary(ArmUnary unary, int padding) {
 }
 
 void PrintArmBinary(ArmBinary binary, int padding) {
-  printf("%*sBinary(", padding, "");
-  PrintArmBinaryOp(binary.op);
-  printf(", ");
-  PrintRegister(binary.left);
-  printf(", ");
-  PrintRegister(binary.right);
-  printf(", ");
-  PrintRegister(binary.dst);
-  printf(")\n");
+  printf("%*sBinary(%s, %s, %s, %s)\n", padding, "",
+         ToBinaryOpStr(binary.op),
+         GetRegisterStr(binary.left), GetRegisterStr(binary.right),
+         GetRegisterStr(binary.dst));
 }
 
 void PrintTwoAddress(Operand src, Operand dst) {

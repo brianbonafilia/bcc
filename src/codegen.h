@@ -174,4 +174,6 @@ void InstructionFixUp(Arena* arena, ArmProgram* tacky_program);
 void WriteArmAssembly(ArmProgram* program, char* s_file);
 char* GetCcStr(ArmCC cc);
 char* GetRegisterStr(Register reg);
+char* ToUnaryOpStr(UnaryOperator op);
+char* ToBinaryOpStr(BinaryOperator op);
 #endif //BCC_SRC_CODEGEN_H_

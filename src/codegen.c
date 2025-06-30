@@ -551,10 +551,8 @@ char* ToUnaryOpStr(UnaryOperator op) {
 }
 
 void WriteUnary(ArmUnary unary, FILE* asm_f) {
-  fprintf(asm_f, "%*s%s  ", ASM_PADDING, "", ToUnaryOpStr(unary.op));
-  WriteRegister(unary.reg, asm_f);
-  fprintf(asm_f, ",    ");
-  WriteRegister(unary.reg, asm_f);
+  fprintf(asm_f, "%*s%s  %s,  %s", ASM_PADDING, "", ToUnaryOpStr(unary.op),
+          GetRegisterStr(unary.reg), GetRegisterStr(unary.reg));
 }
 
 char* ToBinaryOpStr(BinaryOperator op) {
@@ -586,25 +584,22 @@ char* ToBinaryOpStr(BinaryOperator op) {
 }
 
 void WriteBinary(ArmBinary binary, FILE* asm_f) {
-  fprintf(asm_f, "%*s%s  ", ASM_PADDING, "", ToBinaryOpStr(binary.op));
+  char cmp_reg[20];
+  // no destination needed for CMP, so only add the destination
+  // for non-CMP operations.
   if (binary.op != A_CMP) {
-    WriteRegister(binary.dst, asm_f);
-    fprintf(asm_f, ",    ");
+    strncpy(cmp_reg, GetRegisterStr(binary.dst), 16);
+    strcat(cmp_reg, ",  ");
   }
-  WriteRegister(binary.left, asm_f);
-  fprintf(asm_f, ",    ");
-  WriteRegister(binary.right, asm_f);
+  fprintf(asm_f, "%*s%s  %s%s,  %s", ASM_PADDING, "",
+          ToBinaryOpStr(binary.op), cmp_reg, GetRegisterStr(binary.left),
+          GetRegisterStr(binary.right));
 }
 
 void WriteMsub(ArmMsub msub, FILE* asm_f) {
-  fprintf(asm_f, "%*sMSUB  ", ASM_PADDING, "");
-  WriteRegister(msub.dst, asm_f);
-  fprintf(asm_f, ",    ");
-  WriteRegister(msub.right, asm_f);
-  fprintf(asm_f, ",    ");
-  WriteRegister(msub.m, asm_f);
-  fprintf(asm_f, ",    ");
-  WriteRegister(msub.left, asm_f);
+  fprintf(asm_f, "%*sMSUB  %s,  %s,  %s,  %s", ASM_PADDING, "",
+          GetRegisterStr(msub.dst), GetRegisterStr(msub.right),
+          GetRegisterStr(msub.m), GetRegisterStr(msub.left));
 }
 
 char* GetCcStr(ArmCC cc) {
