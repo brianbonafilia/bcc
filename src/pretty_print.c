@@ -142,6 +142,12 @@ void PrintTackyUnary(TackyUnary unary, int padding) {
     case TACKY_NEGATE:
       printf("%*sUnary(Negate, ", padding, "");
       break;
+    case TACKY_L_NOT:
+      printf("%*sUnary(LogicalNot, ", padding, "");
+      break;
+    default:
+      fprintf(stderr, "Invalid Unary Op\n");
+      exit(2);
   }
   PrintTackyVal(unary.src);
   printf(", ");
@@ -171,6 +177,21 @@ char* GetBinaryOpStr(TackyBinaryOp op) {
       return "LShift";
     case TACKY_RSHIFT:
       return "RShift";
+    case TACKY_NOT_EQUAL:
+      return "NotEquals";
+    case TACKY_EQUAL:
+      return "Equals";
+    case TACKY_GREATER_THAN:
+      return "GreaterThan";
+    case TACKY_LESS_THAN:
+      return "LessThan";
+    case TACKY_LE_EQUAL:
+      return "LessOrEqual";
+    case TACKY_GE_EQUAL:
+      return "GreaterOrEqual";
+    default:
+      fprintf(stderr, "encounterd unexpected binary op");
+      exit(2);
   }
 }
 
@@ -186,16 +207,46 @@ void PrintTackyBinary(TackyBinary binary, int padding) {
   printf("),\n");
 }
 
-void PrintTackyInstruction(TackyInstruction* instruction, int padding) {
-  switch (instruction->type) {
+void PrintTackyJmpCC(JumpCond jc, int padding) {
+  PrintTackyVal(jc.val);
+  printf(", %s)\n", jc.target);
+}
+
+void PrintTackyInstruction(TackyInstruction* instr, int padding) {
+  switch (instr->type) {
     case TACKY_RETURN:
-      PrintTackyReturn(instruction->return_val, padding);
+      PrintTackyReturn(instr->return_val, padding);
       return;
     case TACKY_UNARY:
-      PrintTackyUnary(instruction->unary, padding);
+      PrintTackyUnary(instr->unary, padding);
       return;
     case TACKY_BINARY:
-      PrintTackyBinary(instruction->binary, padding);
+      PrintTackyBinary(instr->binary, padding);
+      return;
+    case TACKY_LABEL:
+      printf("%*sLabel(%s)\n", padding, "", instr->label);
+      return;
+    case TACKY_JMP:
+      printf("%*sJMP(%s)\n", padding, "", instr->jump_cond.target);
+      return;
+    case TACKY_JMP_NZ:
+      printf("%*sJMP_NZ(", padding, "");
+      PrintTackyJmpCC(instr->jump_cond, padding);
+      return;
+    case TACKY_JMP_Z:
+       printf("%*sJMP_Z(", padding, "");
+      PrintTackyJmpCC(instr->jump_cond, padding);
+      return;
+    case TACKY_COPY:
+      printf("%*sCOPY(");
+      PrintTackyVal(instr->copy.src);
+      printf(" , ");
+      PrintTackyVal(instr->copy.dst);
+      printf(")\n");
+      return;
+    default:
+      fprintf(stderr, "Encountered unexpected tacky instr type");
+      exit(2);
   }
 }
 
@@ -294,6 +345,9 @@ void PrintArmBinaryOp(BinaryOperator op) {
     case A_LSHIFT:
       printf("LSL");
       return;
+    case A_CMP:
+      printf("CMP");
+      return;
   }
 }
 
@@ -368,7 +422,12 @@ void PrintArmInstruction(Instruction* instr, int padding) {
     case DEALLOC_STACK:
       printf("%*sDeallocStack(%d)\n", padding, "", instr->alloc_stack.size);
       return;
-
+    case SET_CC:
+      printf("%*sCSET(%s, %s)\n", padding, "", GetCcStr(instr->set_cc.cc), GetRegisterStr(instr->set_cc.reg));
+      return;
+    case LABEL:
+      printf("%*sLabel(%s)\n", padding, "", instr->label.identifier);
+      return;
   }
 }
 

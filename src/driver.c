@@ -84,6 +84,9 @@ void InternalCompile(char *file_name, Mode mode) {
   // Phase 3: IR GEN
   TackyProgram* tacky_program = EmitTackyProgram(&arena, program);
   PrettyPrintTacky(tacky_program);
+  if (mode == TACKY) {
+    exit(0);
+  }
 
 
   // Phase 4: Assembly Generation

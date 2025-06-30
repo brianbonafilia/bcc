@@ -29,7 +29,12 @@ typedef enum {
   BINARY,
   MSUB,
   ALLOC_STACK,
-  DEALLOC_STACK
+  DEALLOC_STACK,
+  BRANCH,
+  SET_CC,
+  LABEL,
+  CMP,
+  CMP_BRANCH,
 } InstructionType;
 
 typedef enum {
@@ -68,7 +73,7 @@ typedef struct {
 
 typedef enum {
   NOT,
-  NEG
+  NEG,
 } UnaryOperator;
 
 // remainder excluded, to be done in three steps...
@@ -83,6 +88,7 @@ typedef enum {
   A_AND,
   A_RSHIFT,
   A_LSHIFT,
+  A_CMP,
 } BinaryOperator;
 
 // no DST as we just output to input register.
@@ -113,6 +119,30 @@ typedef struct {
   int size;
 } AllocStack;
 
+typedef enum {
+  // equal , not equal, greater, greater equal...
+  B_E, B_NE, B_G, B_GE, B_L, B_LE, B_Z, B_NZ, B_NO_CC
+} ArmCC;
+
+typedef struct {
+  ArmCC cc;
+  labelStr label;
+} Branch;
+
+typedef struct {
+  Branch branch;
+  Register reg;
+} CompareBranch;
+
+typedef struct {
+  ArmCC cc;
+  Register reg;
+} SetCC;
+
+typedef struct {
+  labelStr identifier;
+} ArmLabel;
+
 typedef struct {
   InstructionType type;
   union {
@@ -121,6 +151,10 @@ typedef struct {
     ArmBinary binary;
     ArmMsub msub;
     AllocStack alloc_stack;
+    Branch branch;
+    CompareBranch cmp_branch;
+    ArmLabel label;
+    SetCC set_cc;
   };
 } Instruction;
 
@@ -138,5 +172,6 @@ ArmProgram* TranslateTacky(Arena* arena, TackyProgram* tacky_program);
 void ReplacePseudoRegisters(Arena* scratch, ArmProgram* tacky_program);
 void InstructionFixUp(Arena* arena, ArmProgram* tacky_program);
 void WriteArmAssembly(ArmProgram* program, char* s_file);
-
+char* GetCcStr(ArmCC cc);
+char* GetRegisterStr(Register reg);
 #endif //BCC_SRC_CODEGEN_H_

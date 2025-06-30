@@ -4,6 +4,7 @@
 typedef enum {
   LEX,
   PARSE,
+  TACKY,
   CODEGEN,
   FULL
 } Mode;

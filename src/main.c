@@ -20,8 +20,10 @@ int main(int argc, char **argv) {
       mode = LEX;
     } else if (strcmp(opt, "--parse") == 0) {
       mode = PARSE;
+    } else if (strcmp(opt, "--tacky") == 0) {
+      mode = TACKY;
     } else if (strcmp(opt, "--codegen") == 0) {
-      mode = CODEGEN;
+        mode = CODEGEN;
     } else {
       fprintf(stderr, "Invalid option not know: %s", opt);
       exit(1);
