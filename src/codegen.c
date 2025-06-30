@@ -6,6 +6,8 @@
 #define ASM_PADDING 4
 #define VAR_SIZE 8
 
+void AppendArmBinary(Arena* arena, ArmFunction* af, TackyInstruction ti);
+
 void AllocInstr(Arena* arena, ArmFunction* arm_func) {
   if (arm_func->instructions == NULL) {
     arm_func->instructions = arena_alloc(arena, sizeof(Instruction));
@@ -41,8 +43,6 @@ UnaryOperator TackyUnaryOpToArm(TackyUnaryOp op) {
       return NOT;
     case TACKY_NEGATE:
       return NEG;
-    case TACKY_L_NOT:
-      return
   }
 }
 
@@ -85,6 +85,19 @@ BinaryOperator ToArmBinaryOp(TackyBinaryOp op) {
 }
 
 void AppendArmUnary(Arena* arena, ArmFunction* af, TackyInstruction ti) {
+  // somewhat hacky workaround for ARM missing a logical not instruction
+  if (ti.unary.op == TACKY_L_NOT) {
+    TackyUnary tu = ti.unary;
+    ti.type = TACKY_BINARY;
+    ti.binary = (TackyBinary) {
+        .op = TACKY_EQUAL,
+        .left = (TackyVal) {.type = TACKY_CONST, .const_val = 0},
+        .right = tu.src,
+        .dst = tu.dst,
+    };
+    AppendArmBinary(arena, af, ti);
+    return;
+  }
   AllocInstr(arena, af);
   AllocInstr(arena, af);
   AllocInstr(arena, af);
@@ -256,6 +269,8 @@ void AppendTackyJmp(Arena* arena, ArmFunction* af, TackyInstruction ti) {
       fprintf(stderr, "unexpected jmp operation\n");
       exit(2);
   }
+  // for conditional jumps alloc an additional instruction.
+  AllocInstr(arena, af);
   // notably we throw the cmp val into a work register.
   af->instructions[af->length++] = (Instruction) {
       .type = MOV,
@@ -279,17 +294,17 @@ void AppendTackyCopy(Arena* arena, ArmFunction* af, TackyCopy copy) {
       .mov = (Mov) {
           .src = TackyValToArmVal(copy.src),
           .dst = (Operand) {
-            .reg = W13,
+              .reg = W13,
           }
       }
   };
   af->instructions[af->length++] = (Instruction) {
       .type = MOV,
       .mov = (Mov) {
-          .src = TackyValToArmVal(copy.src),
-          .dst = (Operand) {
+          .src = (Operand) {
               .reg = W13,
-          }
+          },
+          .dst = TackyValToArmVal(copy.dst),
       }
   };
 }
@@ -507,7 +522,7 @@ void WriteOperand(Operand op, FILE* asm_f) {
       fprintf(asm_f, "#%d", op.imm);
       return;
     case STACK:
-      fprintf(asm_f, "[sp, #%d]", op.stack_location);
+      fprintf(asm_f, "[sp, #%d]", op.stack_location * 4);
       return;
   }
 }
