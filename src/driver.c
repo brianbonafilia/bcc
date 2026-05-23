@@ -66,8 +66,8 @@ void InternalCompile(char *file_name, Mode mode) {
   TokenList token_list = Lex(fp);
   Token last_token = token_list.tokens[token_list.length - 1];
   if (last_token.type != tEof) {
-    fprintf(stderr, "Failed to compile, got last token type %d and val %s",
-            last_token.type, last_token.value);
+    fprintf(stderr, "Failed to compile, got last token type %s and val %s",
+            TokenTypeStr(last_token.type), last_token.value);
     exit(2);
   }
   if (mode == LEX) {

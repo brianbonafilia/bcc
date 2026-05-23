@@ -6,6 +6,7 @@
 #define BRK "{}();~-+*/%|^&<>="
 
 static const char *TypeStr[] = {
+    "tAssignment",
     "tInvalidToken",
     "tIdentifier",
     "tConstant",
@@ -43,6 +44,7 @@ static const char *TypeStr[] = {
 };
 
 typedef enum {
+  tAssignment,
   tInvalidToken,
   tIdentifier,
   tConstant,

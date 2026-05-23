@@ -24,11 +24,15 @@ bool IsBreak(char c) {
   return false;
 }
 
+bool IsIdentifierChar(char c) {
+  return isalpha(c) ||  c == '_' || isnumber(c);
+}
+
 Token GetAlphaToken(FILE *fp) {
   Token result;
   int index = 0;
   char c = fgetc(fp);
-  while (isalpha(c)) {
+  while (IsIdentifierChar(c)) {
     result.value[index++] = c;
     c = fgetc(fp);
   }
@@ -162,10 +166,9 @@ Token NextToken(FILE *fp) {
         result.type = tEqual;
         return result;
       }
-      result.type = tInvalidToken;
-      result.value[0] = '=';
-      result.value[1] = c;
-      result.value[2] = '\0';
+      ungetc(c, fp);
+      result.type = tAssignment;
+      return result;
     case '|': {
       c = fgetc(fp);
       if (c == '|') {
@@ -217,6 +220,7 @@ Token NextToken(FILE *fp) {
     }
     case 'a' ... 'z':
     case 'A' ... 'Z':
+    case '_':
       ungetc(c, fp);
       return GetAlphaToken(fp);
     case '0' ... '9':
