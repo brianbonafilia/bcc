@@ -46,12 +46,20 @@ Exp* ParseFactorInner(Arena* arena, TokenList* list) {
       e = ParseExp(arena, list, 0);
       ExpectTokenType(DequeueToken(list), tCloseParen);
       return e;
-    default:
-      e = arena_alloc(arena, sizeof(Exp));
-      ExpectTokenType(token, tConstant);
+    case tConstant:
       // TODO: use more proper parsing here. Or store const ints as ints.
+      e = arena_alloc(arena, sizeof(Exp));
       e->const_val = atoi(token.value);
       return e;
+    case tIdentifier:
+      e = arena_alloc(arena, sizeof(Exp));
+      e->identifier = arena_alloc(arena, strlen(token.value) + 1);
+      strcpy(e->identifier, token.value);
+      return e;
+    default:
+      fprintf(stderr, "Unexpected token encountered parsing a factor: %s\n",
+              TokenTypeStr(token.type));
+      exit(2);
   }
 }
 
@@ -107,6 +115,7 @@ BinaryOp ParseBinop(Token token) {
 // Works for now, probably could be done more efficiently.
 bool IsBinaryOp(TokenType t) {
   switch (t) {
+    case tAssignment:
     case tPlus:
     case tMinus:
     case tAsterik:
@@ -160,8 +169,10 @@ int Precedence(TokenType t) {
       return 10;
     case tLogicalOr:
       return 5;
+    case tAssignment:
+      return 1;
     default:
-      fprintf(stderr, "Expected +,-,/,%%, or * got type: %s\n",
+      fprintf(stderr, "Expected +,-,/,%%,=, or * got type: %s\n",
               TokenTypeStr(t));
       exit(2);
   }
@@ -172,18 +183,33 @@ Exp* ParseExp(Arena* arena, TokenList* list, int min_precedence) {
   Token* next_token = &list->tokens[0];
   while (IsBinaryOp(next_token->type) &&
       Precedence(next_token->type) >= min_precedence) {
-    BinaryOp op = ParseBinop(DequeueToken(list));
-    Exp* right = ParseExp(arena, list, Precedence(next_token->type) + 1);
-    Exp* binexp = arena_alloc(arena, sizeof(Exp));
-    *binexp = (Exp) {
-        .type = eBinaryExp,
-        .binary_exp = (BinaryExp) {
-            .op = op,
-            .left = left,
-            .right = right,
-        }
-    };
-    left = binexp;
+    if (next_token->type == tAssignment) {
+      DequeueToken(list);
+      Exp* right = ParseExp(arena, list, Precedence(next_token->type));
+      Exp* a = arena_alloc(arena, sizeof(Exp));
+      *a = (Exp) {
+          .type = eAssignment,
+          .assignment = (Assignment) {
+              .left = left,
+              .right = right
+          }
+      };
+      left = a;
+    }
+    else {
+      BinaryOp op = ParseBinop(DequeueToken(list));
+      Exp* right = ParseExp(arena, list, Precedence(next_token->type) + 1);
+      Exp* binexp = arena_alloc(arena, sizeof(Exp));
+      *binexp = (Exp) {
+          .type = eBinaryExp,
+          .binary_exp = (BinaryExp) {
+              .op = op,
+              .left = left,
+              .right = right,
+          }
+      };
+      left = binexp;
+    }
     next_token = &list->tokens[0];
   }
   return left;
@@ -191,11 +217,52 @@ Exp* ParseExp(Arena* arena, TokenList* list, int min_precedence) {
 
 Statement* ParseStatement(Arena* arena, TokenList* list) {
   Statement* s = arena_alloc(arena, sizeof(Statement));
-  s->type = S_RETURN;
-  ExpectTokenType(DequeueToken(list), tReturn);
-  s->exp = ParseExp(arena, list, 0);
+  Token token = DequeueToken(list);
+  switch (token.type) {
+    case tReturn:
+      s->type = S_RETURN;
+      s->exp = ParseExp(arena, list, 0);
+      ExpectTokenType(DequeueToken(list), tSemicolin);
+      return s;
+    case tSemicolin:
+      s->type = S_NULL;
+      return s;
+    default:
+      s->type = S_EXP;
+      list->tokens--;
+      s->exp = ParseExp(arena, list, 0);
+      ExpectTokenType(DequeueToken(list), tSemicolin);
+      return s;
+  }
+}
+
+Declaration* ParseDeclaration(Arena* arena, TokenList* list) {
+  Declaration* dec = arena_alloc(arena, sizeof(Declaration));
+  ExpectTokenType(DequeueToken(list), tInt);
+  Token token = DequeueToken(list);
+  ExpectTokenType(token, tIdentifier);
+  dec->identifier = arena_alloc(arena, strlen(token.value) + 1);
+  strcpy(dec->identifier, token.value);
+  token = DequeueToken(list);
+  // No initialization
+  if (token.type == tSemicolin) {
+    return dec;
+  }
+  dec->init = ParseExp(arena, list, 0);
   ExpectTokenType(DequeueToken(list), tSemicolin);
-  return s;
+  return dec;
+}
+
+BlockItem* ParseBlockItem(Arena* arena, TokenList* list) {
+  BlockItem* item = arena_alloc(arena, sizeof(BlockItem));
+  if (list->tokens[0].type == tInt) {
+    item->type = B_DECLARATION;
+    item->declaration = ParseDeclaration(arena, list);
+    return item;
+  }
+  item->type = B_STATEMENT;
+  item->statement = ParseStatement(arena, list);
+  return item;
 }
 
 // Expect <function> ::= "int" <identifier> "(" "void" ")" "{" <statement> "}"
@@ -211,7 +278,13 @@ Function* ParseFunction(Arena* arena, TokenList* list) {
   ExpectTokenType(DequeueToken(list), tVoid);
   ExpectTokenType(DequeueToken(list), tCloseParen);
   ExpectTokenType(DequeueToken(list), tOpenBrace);
-  f->statement = ParseStatement(arena, list);
+  f->item_list.items = arena_alloc(arena, sizeof(BlockItem) * 100);
+  // TODO: update to use a more proper allocation strategy...
+  // arenas seeming a not great strategy... perhaps I can make it work though. could
+  // even be lazy and just malloc and skip free.
+  while (list->tokens[0].type != tCloseBrace) {
+    f->item_list.items[f->item_list.length++] = ParseBlockItem(arena, list);
+  }
   ExpectTokenType(DequeueToken(list), tCloseBrace);
   return f;
 }

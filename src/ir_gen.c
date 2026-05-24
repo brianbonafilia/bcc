@@ -204,7 +204,7 @@ TackyFunction* EmitTackyFunction(Arena* arena, Function* func) {
   TackyFunction* t_func = arena_alloc(arena, sizeof(TackyFunction));
   t_func->identifier = func->name;
   t_func->instr_length = 0;
-  TackyVal src = EmitTacky(arena, func->statement->exp, t_func);
+  TackyVal src = EmitTacky(arena, func->item_list.items[0]->statement->exp, t_func);
   TackyInstruction return_instr = {
       .type = TACKY_RETURN,
       .return_val = src

@@ -101,7 +101,7 @@ void PrintStatement(Statement* statement, int padding) {
 void PrintFunction(Function* function, int padding) {
   printf("%*sname = \"%s\"\n", padding, "", function->name);
   printf("%*sbody = Return(\n", padding, "");
-  PrintStatement(function->statement, padding + 2);
+//  PrintStatement(function->statement, padding + 2);
   printf("%*s)\n", padding, "");
 }
 

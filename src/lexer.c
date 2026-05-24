@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#define MAX_TOKENS 100
+#define MAX_TOKENS 1000
 
 bool IsBreak(char c) {
   if (isspace(c)) {

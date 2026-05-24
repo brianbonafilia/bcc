@@ -3,10 +3,12 @@
  *
  * Initially scoped down to a small grammar, which is as follows
  * <program> ::= <function>
- * <function> ::= "int" <identifier> "(" "void" ")" "{" <statement> "}"
- * <statement> ::= "return" <exp> ";"
+ * <function> ::= "int" <identifier> "(" "void" ")" "{" { <block_item> } "}"
+ * <block_item> ::= <statement> | <declaration>
+ * <declaration> ::= "int" <identifier> [ "=" <exp> ] ";"
+ * <statement> ::= "return" <exp> ";" | <exp> ";" | ";"
  * <exp> ::= <factor> | <exp> <binop> <exp>
- * <factor> ::= <int> | <unop> <exp> | "(" <exp> ")"
+ * <factor> ::= <int> | <identifier> | <unop> <factor> | "(" <exp> ")"
  * <unop> ::= "-" | "~" | "!"
  * <binop> ::= "-" | "-" | "*" | "/" | "%" | "&&" | "||"
  *      | "==" | "!=" | "<" | "<=" | ">" | ">=" | "|" | "&" | "<<"
@@ -16,21 +18,43 @@
  *
  * With the Abstract Syntax Tree Defined as
  * program = Program(function_definition()
- * function_definition = Function(identifier name, statement body)
- * statement = Return(exp)
- * exp = Constant(int) | Unary(unary_operator, exp)
- * unary_operator = Complement | Negate
+ * function_definition = Function(identifier name, block_item* body)
+ * block_item = S(statement) | D(declaration)
+ * statement = Return(exp) | Expression(exp) | null
+ * exp = Constant(int)
+ *    | Var(identifier)
+ *    | Unary(unary_operator, exp)
+ *    | Binary(binary_operator, exp, exp)
+ *    | Assignment(exp, exp)
+ * unary_operator = Complement | Negate | Logical Not
+ * binary_operator = Subtract | Add | Multiply | Divide | Remainder | Logical And
+ *    | Logical Or | Not Equals | Equals | Less Than | Greater Than | Greater
+ *    Equals | Lesser Equals | Or | And | XOr | Left Shift | Right Shift
+ *
  */
 #ifndef BCC_SRC_PARSER_H
 #define BCC_SRC_PARSER_H
 #include "arena.h"
 #include "lexer.h"
 
+typedef struct Exp Exp;
+typedef struct Statement Statement;
+typedef struct Declaration Declaration;
+typedef struct Assignment Assignment;
+typedef struct BlockItem BlockItem;
+
 typedef enum {
   eConst,
   eUnaryExp,
-  eBinaryExp
+  eBinaryExp,
+  eVar,
+  eAssignment,
 } ExpType;
+
+typedef enum {
+  B_STATEMENT,
+  B_DECLARATION
+} BlockItemType;
 
 typedef enum {
   COMPLEMENT,
@@ -60,10 +84,11 @@ typedef enum {
 } BinaryOp;
 
 typedef enum {
-  S_RETURN
+  S_RETURN,
+  S_EXP,
+  S_NULL
 } StatementType;
 
-typedef struct Exp Exp;
 typedef struct {
   UnaryOp op_type;
   Exp* exp;
@@ -75,23 +100,48 @@ typedef struct {
   Exp* right;
 } BinaryExp;
 
+struct Assignment {
+  Exp* left;
+  Exp* right;
+};
+
 struct Exp {
   ExpType type;
   union {
     int const_val;
+    char* identifier;
+    Assignment assignment;
     UnaryExp unary_exp;
     BinaryExp binary_exp;
   };
 };
 
-typedef struct {
+struct BlockItem {
+  BlockItemType type;
+  union {
+    Statement* statement;
+    Declaration* declaration;
+  };
+};
+
+struct Statement {
   StatementType type;
   Exp* exp;
-} Statement;
+};
+
+struct Declaration {
+  char* identifier;
+  Exp* init;
+};
+
+typedef struct {
+  BlockItem** items;
+  int length;
+} BlockItemList;
 
 typedef struct {
   char* name;
-  Statement* statement;
+  BlockItemList item_list;
 } Function;
 
 typedef struct {
