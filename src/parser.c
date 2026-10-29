@@ -53,6 +53,7 @@ Exp* ParseFactorInner(Arena* arena, TokenList* list) {
       return e;
     case tIdentifier:
       e = arena_alloc(arena, sizeof(Exp));
+      e->type = eVar;
       e->identifier = arena_alloc(arena, strlen(token.value) + 1);
       strcpy(e->identifier, token.value);
       return e;

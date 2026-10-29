@@ -4,6 +4,7 @@
 typedef enum {
   LEX,
   PARSE,
+  VALIDATE,
   TACKY,
   CODEGEN,
   FULL
