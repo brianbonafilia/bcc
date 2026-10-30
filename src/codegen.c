@@ -454,6 +454,9 @@ void UpdateInstructions(Arena* arena, ArmFunction* func) {
       } else if (next.mov.dst.type == STACK) {
         next.type = STR;
         largest_stack = max(next.mov.dst.stack_location, largest_stack);
+      } else if (next.mov.src.type == IMM) {
+        // TODO: actually check if it can fit a move...
+        next.type = LDR;
       }
       next_list_instr[pos++] = next;
     } else {
@@ -519,7 +522,8 @@ void WriteOperand(Operand op, FILE* asm_f) {
       WriteRegister(op.reg, asm_f);
       return;
     case IMM:
-      fprintf(asm_f, "#%d", op.imm);
+      // TODO: add precise handling for ARM constants
+      fprintf(asm_f, "=%d", op.imm);
       return;
     case STACK:
       fprintf(asm_f, "[sp, #%d]", op.stack_location * 4);

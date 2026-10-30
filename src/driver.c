@@ -85,6 +85,8 @@ void InternalCompile(char* file_name, Mode mode) {
   // Phases 3: Semantic Analysis
   AnalyzeSemantics(program);
   if (mode == VALIDATE) {
+    // TODO: Investigate why this is doing anything.
+    fflush(stdout);
     exit(0);
   }
   // Phase 4: IR GEN

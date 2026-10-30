@@ -20,6 +20,8 @@
 typedef enum {
   // The default initial mov
   MOV,
+  // Pseudo instruction to move 32 bit values. Splits it into two 16 bit moves.
+  MOV32,
   // Store register in mem
   STR,
   // load from mem to register

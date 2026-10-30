@@ -197,20 +197,73 @@ TackyVal EmitTacky(Arena* arena, Exp* exp, TackyFunction* tf) {
       AppendInstruction(arena, tf, t_instr);
       return dst;
     }
+    case eAssignment: {
+      TackyVal v = EmitTacky(arena, exp->assignment.right, tf);
+      TackyVal dst = {.type = TACKY_VAR};
+      sprintf(dst.identifier, "%s", exp->assignment.left->identifier);
+      TackyInstruction t_instr = {
+          .type = TACKY_COPY,
+          .copy.src = v,
+          .copy.dst = dst,
+      };
+      AppendInstruction(arena, tf, t_instr);
+      return dst;
+      }
+      case eVar: {
+        TackyVal dst = {.type = TACKY_VAR};
+        sprintf(dst.identifier, "%s", exp->identifier);
+        return dst;
+      }
+
   }
 }
 
 TackyFunction* EmitTackyFunction(Arena* arena, Function* func) {
-  TackyFunction* t_func = arena_alloc(arena, sizeof(TackyFunction));
-  t_func->identifier = func->name;
-  t_func->instr_length = 0;
-  TackyVal src = EmitTacky(arena, func->item_list.items[0]->statement->exp, t_func);
-  TackyInstruction return_instr = {
-      .type = TACKY_RETURN,
-      .return_val = src
-  };
-  AppendInstruction(arena, t_func, return_instr);
-  return t_func;
+  TackyFunction* tf = arena_alloc(arena, sizeof(TackyFunction));
+  tf->identifier = func->name;
+  tf->instr_length = 0;
+  bool returnLast = false;
+  for (int i = 0; i < func->item_list.length; ++i) {
+    returnLast = false;
+    BlockItem*  item = func->item_list.items[i];
+    switch (item->type) {
+      case B_DECLARATION:
+        if (item->declaration->init == NULL)
+          continue;
+        TackyVal v = EmitTacky(arena, item->declaration->init, tf);
+        TackyVal dst = {.type = TACKY_VAR};
+        sprintf(dst.identifier, "%s", item->declaration->identifier);
+        TackyInstruction t_instr = {
+            .type = TACKY_COPY,
+            .copy.src = v,
+            .copy.dst = dst,
+        };
+        AppendInstruction(arena, tf, t_instr);
+        break;
+      case B_STATEMENT:
+        if (item->statement->type == S_NULL) {
+          continue;
+        } else if (item->statement->type == S_EXP) {
+          EmitTacky(arena, item->statement->exp, tf);
+        } else if (item->statement->type == S_RETURN) {
+          TackyVal src = EmitTacky(arena, item->statement->exp, tf);
+          TackyInstruction return_instr = {
+              .type = TACKY_RETURN,
+              .return_val = src
+          };
+          AppendInstruction(arena, tf, return_instr);
+          returnLast = true;
+        }
+    }
+  }
+  if (!returnLast) {
+    TackyInstruction ret = {
+        .type = TACKY_RETURN,
+        .return_val = (TackyVal) { .const_val = 0 },
+    };
+    AppendInstruction(arena, tf, ret);
+  }
+  return tf;
 }
 
 TackyProgram* EmitTackyProgram(Arena* arena, Program* program) {
