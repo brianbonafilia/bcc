@@ -40,6 +40,11 @@ static const char *TypeStr[] = {
     "tGreaterThan",
     "tLessOrEqual",
     "tGreaterOrEqual",
+    "tPlusEquals",
+    "tMinusEquals",
+    "tMultiplyEquals",
+    "tDividesEquals",
+    "tModuloEquals",
     "tEof"
 };
 
@@ -78,6 +83,11 @@ typedef enum {
   tGreaterThan,
   tLessOrEqual,
   tGreaterOrEqual,
+  tPlusEquals,
+  tMinusEquals,
+  tMultiplyEquals,
+  tDividesEquals,
+  tModuloEquals,
   tEof
 } TokenType;
 

@@ -100,9 +100,19 @@ typedef struct {
   Exp* right;
 } BinaryExp;
 
+typedef enum {
+  A_EQUALS,
+  A_PLUS_EQUALS,
+  A_MINUS_EQUALS,
+  A_MULTIPLY_EQUALS,
+  A_DIVIDE_EQUALS,
+  A_MODULO_EQUALS,
+} AssignmentType;
+
 struct Assignment {
   Exp* left;
   Exp* right;
+  AssignmentType type;
 };
 
 struct Exp {

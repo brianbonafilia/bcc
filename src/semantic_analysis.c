@@ -118,7 +118,7 @@ void ResolveExp(VariableMap* m, Exp* exp) {
   switch (exp->type) {
     case eAssignment:
       if (exp->assignment.left->type != eVar) {
-        fprintf(stderr, "Invalid lvalue");
+        fprintf(stderr, "Invalid lvalue\n");
         exit(2);
       }
       ResolveExp(m, exp->assignment.left);
@@ -127,7 +127,7 @@ void ResolveExp(VariableMap* m, Exp* exp) {
     case eVar:
       v = VariableMapGet(m, exp->identifier);
       if (v == NULL) {
-        fprintf(stderr, "Undeclared variable! %s", exp->identifier);
+        fprintf(stderr, "Undeclared variable! %s\n", exp->identifier);
         exit(2);
       }
       exp->identifier = v;

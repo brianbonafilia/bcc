@@ -9,7 +9,7 @@ Arena allocate_arena(int size_in_bytes) {
       .size = size_in_bytes
   };
   if (arena.next_ptr == NULL) {
-    fprintf(stderr, "failed to allocate memory");
+    fprintf(stderr, "failed to allocate memory\n");
     exit(2);
   }
   arena.to_free_ptr = arena.next_ptr;

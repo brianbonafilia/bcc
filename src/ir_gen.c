@@ -71,7 +71,26 @@ TackyBinaryOp ConvertBinaryOp(BinaryOp op) {
     case NOT_EQUAL:
       return TACKY_NOT_EQUAL;
     default:
-      fprintf(stderr, "Unexpected binary op type: %d", op);
+      fprintf(stderr, "Unexpected binary op type: %d\n", op);
+      exit(1);
+  }
+}
+
+TackyBinaryOp BinaryAssignmentOp(AssignmentType a) {
+  switch(a) {
+    case A_MODULO_EQUALS:
+      return TACKY_REMAINDER;
+    case A_PLUS_EQUALS:
+      return TACKY_ADD;
+    case A_MULTIPLY_EQUALS:
+      return TACKY_MULTIPLY;
+    case A_DIVIDE_EQUALS:
+      return TACKY_DIVIDE;
+    case A_MINUS_EQUALS:
+      return TACKY_SUBTRACT;
+    default:
+      fprintf(stderr, "Unexpected assignment type\n");
+      exit(1);
   }
 }
 
@@ -198,14 +217,26 @@ TackyVal EmitTacky(Arena* arena, Exp* exp, TackyFunction* tf) {
       return dst;
     }
     case eAssignment: {
-      TackyVal v = EmitTacky(arena, exp->assignment.right, tf);
+      TackyVal right = EmitTacky(arena, exp->assignment.right, tf);
       TackyVal dst = {.type = TACKY_VAR};
       sprintf(dst.identifier, "%s", exp->assignment.left->identifier);
-      TackyInstruction t_instr = {
-          .type = TACKY_COPY,
-          .copy.src = v,
-          .copy.dst = dst,
-      };
+      TackyInstruction t_instr;
+      if (exp->assignment.type == A_EQUALS) {
+        t_instr = (TackyInstruction){
+            .type = TACKY_COPY,
+            .copy.src = right,
+            .copy.dst = dst,
+        };
+      } else {
+        TackyBinaryOp op = BinaryAssignmentOp(exp->assignment.type);
+        t_instr = (TackyInstruction){
+            .type = TACKY_BINARY,
+            .binary.op = op,
+            .binary.left = dst,
+            .binary.right = right,
+            .binary.dst = dst,
+        };
+      }
       AppendInstruction(arena, tf, t_instr);
       return dst;
       }

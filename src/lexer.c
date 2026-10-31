@@ -114,6 +114,9 @@ Token NextToken(FILE *fp) {
         result.type = tInvalidToken;
         strcpy("--", result.value);
         return result;
+      } else if (c == '=') {
+        result.type = tMinusEquals;
+        return result;
       }
       ungetc(c, fp);
       result.type = tMinus;
@@ -123,6 +126,9 @@ Token NextToken(FILE *fp) {
       if (c == '+') {
         result.type = tInvalidToken;
         strcpy("++", result.value);
+        return result;
+      } else if (c == '=') {
+        result.type = tPlusEquals;
         return result;
       }
       ungetc(c, fp);
@@ -134,6 +140,9 @@ Token NextToken(FILE *fp) {
         result.type = tInvalidToken;
         strcpy("//", result.value);
         return result;
+      } else if (c == '=') {
+        result.type = tDividesEquals;
+        return result;
       }
       ungetc(c, fp);
       result.type = tForSlash;
@@ -144,11 +153,20 @@ Token NextToken(FILE *fp) {
         result.type = tInvalidToken;
         strcpy("**", result.value);
         return result;
+      } else if (c == '=') {
+        result.type = tMultiplyEquals;
+        return result;
       }
       ungetc(c, fp);
       result.type = tAsterik;
       return result;
     case '%':
+      c = fgetc(fp);
+      if (c == '=') {
+        result.type = tModuloEquals;
+        return result;
+      }
+      ungetc(c, fp);
       result.type = tModulo;
       return result;
     case '!':

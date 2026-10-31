@@ -51,7 +51,7 @@ BinaryOperator ToArmBinaryOp(TackyBinaryOp op) {
     case TACKY_DIVIDE:
       return A_DIVIDE;
     case TACKY_REMAINDER:
-      fprintf(stderr, "Unexpected binary op, remainder found");
+      fprintf(stderr, "Unexpected binary op, remainder found\n");
       exit(2);
     case TACKY_MULTIPLY:
       return A_MULTIPLY;

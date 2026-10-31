@@ -9,7 +9,7 @@ int main(int argc, char **argv) {
 
   if (argc < MIN_ARGUMENTS) {
     fprintf(stderr, "Incorrect number of arguments, got %d, expected "
-                    "at least %d",
+                    "at least %d\n",
             argc, MIN_ARGUMENTS);
     exit(1);
   }

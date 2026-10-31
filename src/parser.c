@@ -25,7 +25,7 @@ UnaryOp GetOp(TokenType type) {
     case tLogicalNot:
       return LOGICAL_NOT;
     default:
-      fprintf(stderr, "encountered bad unary op");
+      fprintf(stderr, "encountered bad unary op\n");
       exit(1);
   }
 }
@@ -117,6 +117,11 @@ BinaryOp ParseBinop(Token token) {
 bool IsBinaryOp(TokenType t) {
   switch (t) {
     case tAssignment:
+    case tPlusEquals:
+    case tMinusEquals:
+    case tMultiplyEquals:
+    case tDividesEquals:
+    case tModuloEquals:
     case tPlus:
     case tMinus:
     case tAsterik:
@@ -170,6 +175,11 @@ int Precedence(TokenType t) {
       return 10;
     case tLogicalOr:
       return 5;
+    case tPlusEquals:
+    case tMinusEquals:
+    case tMultiplyEquals:
+    case tDividesEquals:
+    case tModuloEquals:
     case tAssignment:
       return 1;
     default:
@@ -179,12 +189,46 @@ int Precedence(TokenType t) {
   }
 }
 
+bool IsAssignmentToken(TokenType t) {
+  switch (t) {
+    case tPlusEquals:
+    case tMinusEquals:
+    case tMultiplyEquals:
+    case tDividesEquals:
+    case tModuloEquals:
+    case tAssignment:
+      return true;
+    default:
+      return false;
+  }
+}
+
+AssignmentType ToAssignmentType(TokenType t) {
+  switch (t) {
+    case tPlusEquals:
+      return A_PLUS_EQUALS;
+    case tMinusEquals:
+      return A_MINUS_EQUALS;
+    case tMultiplyEquals:
+      return A_MULTIPLY_EQUALS;
+    case tDividesEquals:
+      return A_DIVIDE_EQUALS;
+    case tModuloEquals:
+      return A_MODULO_EQUALS;
+    case tAssignment:
+      return A_EQUALS;
+    default:
+      fprintf(stderr, "Unexpected assignment type\n");
+      exit(1);
+  }
+}
+
 Exp* ParseExp(Arena* arena, TokenList* list, int min_precedence) {
   Exp* left = ParseFactor(arena, list);
   Token* next_token = &list->tokens[0];
   while (IsBinaryOp(next_token->type) &&
       Precedence(next_token->type) >= min_precedence) {
-    if (next_token->type == tAssignment) {
+    if (IsAssignmentToken(next_token->type)) {
       DequeueToken(list);
       Exp* right = ParseExp(arena, list, Precedence(next_token->type));
       Exp* a = arena_alloc(arena, sizeof(Exp));
@@ -192,12 +236,12 @@ Exp* ParseExp(Arena* arena, TokenList* list, int min_precedence) {
           .type = eAssignment,
           .assignment = (Assignment) {
               .left = left,
-              .right = right
+              .right = right,
+              .type  = ToAssignmentType(next_token->type)
           }
       };
       left = a;
-    }
-    else {
+    } else {
       BinaryOp op = ParseBinop(DequeueToken(list));
       Exp* right = ParseExp(arena, list, Precedence(next_token->type) + 1);
       Exp* binexp = arena_alloc(arena, sizeof(Exp));
@@ -249,6 +293,7 @@ Declaration* ParseDeclaration(Arena* arena, TokenList* list) {
   if (token.type == tSemicolin) {
     return dec;
   }
+  ExpectTokenType(token, tAssignment);
   dec->init = ParseExp(arena, list, 0);
   ExpectTokenType(DequeueToken(list), tSemicolin);
   return dec;
