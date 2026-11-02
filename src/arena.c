@@ -18,7 +18,7 @@ Arena allocate_arena(int size_in_bytes) {
 
 void* arena_alloc(Arena* arena, int size_in_bytes) {
   if (arena->used + size_in_bytes > arena->size) {
-    fprintf(stderr, "out of memory in arena");
+    fprintf(stderr, "out of memory in arena\n");
     exit(2);
   }
   void* ret = arena->next_ptr;

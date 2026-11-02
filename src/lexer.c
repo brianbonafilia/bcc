@@ -192,6 +192,9 @@ Token NextToken(FILE *fp) {
       if (c == '|') {
         result.type = tLogicalOr;
         return result;
+      } else if (c == '=') {
+        result.type = tOrEquals;
+        return result;
       }
       ungetc(c, fp);
       result.type = tOr;
@@ -202,17 +205,31 @@ Token NextToken(FILE *fp) {
       if (c == '&') {
         result.type = tLogicalAnd;
         return result;
+      } else if ( c == '=') {
+        result.type = tAndEquals;
+        return result;
       }
       ungetc(c, fp);
       result.type = tAnd;
       return result;
     }
     case '^':
+      c = fgetc(fp);
+      if (c == '=') {
+        result.type = tXorEquals;
+        return result;
+      }
       result.type = tXor;
       return result;
     case '<': {
       c = fgetc(fp);
       if (c == '<') {
+        c = fgetc(fp);
+        if (c == '=') {
+          result.type = tLShiftEquals;
+          return result;
+        }
+        ungetc(c, fp);
         result.type = tLeftShift;
         return result;
       } else if (c == '=') {
@@ -226,6 +243,11 @@ Token NextToken(FILE *fp) {
     case '>': {
       c = fgetc(fp);
       if (c == '>') {
+        c = fgetc(fp);
+        if (c == '=') {
+          result.type = tRShiftEquals;
+          return result;
+        }
         result.type = tRightShift;
         return result;
       } else if (c == '=') {

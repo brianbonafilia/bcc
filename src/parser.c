@@ -10,7 +10,7 @@ Exp* ParseExp(Arena* arena, TokenList* list, int min_precedence);
 
 void ExpectTokenType(Token token, TokenType type) {
   if (token.type != type) {
-    fprintf(stderr, "Expected type %s but got type %s", TokenTypeStr(type),
+    fprintf(stderr, "Expected type %s but got type %s\n", TokenTypeStr(type),
             TokenTypeStr(token.type));
     exit(2);
   }
@@ -122,6 +122,11 @@ bool IsBinaryOp(TokenType t) {
     case tMultiplyEquals:
     case tDividesEquals:
     case tModuloEquals:
+    case tAndEquals:
+    case tOrEquals:
+    case tXorEquals:
+    case tLShiftEquals:
+    case tRShiftEquals:
     case tPlus:
     case tMinus:
     case tAsterik:
@@ -180,6 +185,11 @@ int Precedence(TokenType t) {
     case tMultiplyEquals:
     case tDividesEquals:
     case tModuloEquals:
+    case tAndEquals:
+    case tOrEquals:
+    case tXorEquals:
+    case tLShiftEquals:
+    case tRShiftEquals:
     case tAssignment:
       return 1;
     default:
@@ -196,6 +206,11 @@ bool IsAssignmentToken(TokenType t) {
     case tMultiplyEquals:
     case tDividesEquals:
     case tModuloEquals:
+    case tAndEquals:
+    case tOrEquals:
+    case tXorEquals:
+    case tLShiftEquals:
+    case tRShiftEquals:
     case tAssignment:
       return true;
     default:
@@ -215,6 +230,16 @@ AssignmentType ToAssignmentType(TokenType t) {
       return A_DIVIDE_EQUALS;
     case tModuloEquals:
       return A_MODULO_EQUALS;
+    case tAndEquals:
+      return A_AND_EQUALS;
+    case tOrEquals:
+      return A_OR_EQUALS;
+    case tXorEquals:
+      return A_XOR_EQUALS;
+    case tLShiftEquals:
+      return A_L_SHIFT_EQUALS;
+    case tRShiftEquals:
+      return A_R_SHIFT_EQUALS;
     case tAssignment:
       return A_EQUALS;
     default:

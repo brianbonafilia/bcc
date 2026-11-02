@@ -107,6 +107,11 @@ typedef enum {
   A_MULTIPLY_EQUALS,
   A_DIVIDE_EQUALS,
   A_MODULO_EQUALS,
+  A_AND_EQUALS,
+  A_OR_EQUALS,
+  A_XOR_EQUALS,
+  A_L_SHIFT_EQUALS,
+  A_R_SHIFT_EQUALS,
 } AssignmentType;
 
 struct Assignment {

@@ -46,7 +46,7 @@ char* BinaryOpStr(BinaryOp op) {
     case LESS_OR_EQUAL:
       return "LessOrEqual";
     default:
-      fprintf(stderr, "uh oh, unexpected binary op, code:%d", op);
+      fprintf(stderr, "uh oh, unexpected binary op, code:%d \n", op);
       exit(2);
   }
 }

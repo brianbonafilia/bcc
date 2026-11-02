@@ -21,11 +21,11 @@ int main() {
   got = VariableMapGet(map, "test");
   if (got == NULL) {
     testPassed = false;
-    fprintf(stderr, "Did not find expected value \"test\" from map");
+    fprintf(stderr, "Did not find expected value \"test\" from map\n");
   }
   if (strcmp(got, "val") != 0) {
     testPassed = false;
-    fprintf(stderr, "Did not find expected value \"test\" from map");
+    fprintf(stderr, "Did not find expected value \"test\" from map\n");
   }
 
   FreeMap(map);

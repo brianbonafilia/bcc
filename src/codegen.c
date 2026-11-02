@@ -183,7 +183,7 @@ ArmCC GetArmCC(TackyBinaryOp op) {
     case TACKY_NOT_EQUAL:
       return B_NE;
     default:
-      fprintf(stderr, "Invalid op for GetArmCC");
+      fprintf(stderr, "Invalid op for GetArmCC\n");
       exit(2);
   }
 }
@@ -353,7 +353,7 @@ void AppendArmInstruction(Arena* arena, ArmFunction* arm_func, TackyInstruction 
       AppendTackyLabel(arena, arm_func, t_instr.label);
       return;
     default:
-      fprintf(stderr, "unexpected tacky instruction conversion to ARM");
+      fprintf(stderr, "unexpected tacky instruction conversion to ARM\n");
       exit(2);
   }
 }

@@ -142,7 +142,7 @@ void ResolveExp(VariableMap* m, Exp* exp) {
     case eConst:
       return;
     default:
-      fprintf(stderr, "unknown expression type");
+      fprintf(stderr, "unknown expression type\n");
   }
 }
 

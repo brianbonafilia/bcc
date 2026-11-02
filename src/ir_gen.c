@@ -88,6 +88,16 @@ TackyBinaryOp BinaryAssignmentOp(AssignmentType a) {
       return TACKY_DIVIDE;
     case A_MINUS_EQUALS:
       return TACKY_SUBTRACT;
+    case A_AND_EQUALS:
+      return TACKY_AND;
+    case A_OR_EQUALS:
+      return TACKY_OR;
+    case A_XOR_EQUALS:
+      return TACKY_XOR;
+    case A_L_SHIFT_EQUALS:
+      return TACKY_LSHIFT;
+    case A_R_SHIFT_EQUALS:
+      return TACKY_RSHIFT;
     default:
       fprintf(stderr, "Unexpected assignment type\n");
       exit(1);
