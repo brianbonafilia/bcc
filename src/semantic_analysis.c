@@ -5,6 +5,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "parser.h"
 
 const int default_capacity = 32;
 int variableCount = 0;
@@ -136,7 +137,22 @@ void ResolveExp(VariableMap* m, Exp* exp) {
       ResolveExp(m, exp->binary_exp.left);
       ResolveExp(m, exp->binary_exp.right);
       return;
+    case ePostFix:
+      // TODO: eventually we will have postfix operators which
+      // behave differently.
+      if (exp->post_fix.exp->type != eVar) {
+        fprintf(stderr, "expected lvalue\n");
+        exit(1);
+      }
+      ResolveExp(m, exp->post_fix.exp);
+      return;
     case eUnaryExp:
+      if (IsUnaryAssignment(exp->unary_exp.op_type)) {
+        if (exp->unary_exp.exp->type != eVar) {
+          fprintf(stderr, "expected lvalue\n");
+          exit(1);
+        }
+      }
       ResolveExp(m, exp->unary_exp.exp);
       return;
     case eConst:

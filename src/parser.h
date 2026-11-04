@@ -9,7 +9,8 @@
  * <statement> ::= "return" <exp> ";" | <exp> ";" | ";"
  * <exp> ::= <factor> | <exp> <binop> <exp>
  * <factor> ::= <int> | <identifier> | <unop> <factor> | "(" <exp> ")"
- * <unop> ::= "-" | "~" | "!"
+ * <unop> ::= "-" | "~" | "!" | "++" | "--"
+ * <postfix> ::= "++" | "--"
  * <binop> ::= "-" | "-" | "*" | "/" | "%" | "&&" | "||"
  *      | "==" | "!=" | "<" | "<=" | ">" | ">=" | "|" | "&" | "<<"
  *      | ">>" | "^"
@@ -24,9 +25,11 @@
  * exp = Constant(int)
  *    | Var(identifier)
  *    | Unary(unary_operator, exp)
+ *    | PostFix(exp, postfix_operator)
  *    | Binary(binary_operator, exp, exp)
  *    | Assignment(exp, exp)
- * unary_operator = Complement | Negate | Logical Not
+ * unary_operator = Complement | Negate | Logical Not | PreIncrement | PreDecrement
+ * postfix_operator = PostIncrement | PostDecrement
  * binary_operator = Subtract | Add | Multiply | Divide | Remainder | Logical And
  *    | Logical Or | Not Equals | Equals | Less Than | Greater Than | Greater
  *    Equals | Lesser Equals | Or | And | XOr | Left Shift | Right Shift
@@ -34,6 +37,7 @@
  */
 #ifndef BCC_SRC_PARSER_H
 #define BCC_SRC_PARSER_H
+#include <stdbool.h>
 #include "arena.h"
 #include "lexer.h"
 
@@ -42,12 +46,14 @@ typedef struct Statement Statement;
 typedef struct Declaration Declaration;
 typedef struct Assignment Assignment;
 typedef struct BlockItem BlockItem;
+typedef struct PostFix PostFix;
 
 typedef enum {
   eConst,
   eUnaryExp,
   eBinaryExp,
   eVar,
+  ePostFix,
   eAssignment,
 } ExpType;
 
@@ -60,7 +66,14 @@ typedef enum {
   COMPLEMENT,
   NEGATE,
   LOGICAL_NOT,
+  PRE_INCREMENT,
+  PRE_DECREMENT
 } UnaryOp;
+
+typedef enum {
+  POST_INCREMENT,
+  POST_DECREMENT
+} PostFixOp;
 
 typedef enum {
   ADD,
@@ -120,6 +133,11 @@ struct Assignment {
   AssignmentType type;
 };
 
+struct PostFix {
+  Exp* exp;
+  PostFixOp op;
+};
+
 struct Exp {
   ExpType type;
   union {
@@ -128,6 +146,7 @@ struct Exp {
     Assignment assignment;
     UnaryExp unary_exp;
     BinaryExp binary_exp;
+    PostFix post_fix;
   };
 };
 
@@ -163,5 +182,6 @@ typedef struct {
   Function* function;
 } Program;
 
+bool IsUnaryAssignment(UnaryOp op);
 Program* ParseTokens(Arena* arena, TokenList list);
 #endif // BCC_SRC_PARSER_H

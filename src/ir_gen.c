@@ -187,6 +187,76 @@ TackyVal ExpandBinaryExp(Arena* arena, BinaryExp exp, TackyFunction* tf) {
   return copy.copy.dst;
 }
 
+TackyVal EmitUnaryAssignment(Arena* a, Exp* exp, TackyFunction* tf) {
+  TackyVal src = EmitTacky(a, exp->unary_exp.exp, tf);
+  TackyBinaryOp op;
+  switch(exp->unary_exp.op_type) {
+    case PRE_INCREMENT:
+      op = TACKY_ADD;
+      break;
+    case PRE_DECREMENT:
+      op = TACKY_SUBTRACT;
+      break;
+    default:
+      fprintf(stderr, "unexpected unary assignment op\n");
+      exit(1);
+  }
+  // Add or subtract one, then throw it back into the src.
+  TackyInstruction instr = {
+      .type = TACKY_BINARY,
+      .binary = (TackyBinary) {
+        .op = op,
+        .left = src,
+        .right = (TackyVal) {
+          .const_val = 1,
+        },
+        .dst = src
+      }
+  };
+  AppendInstruction(a, tf, instr);
+  return src;
+}
+
+TackyVal EmitPostfixAssignment(Arena* a, Exp* exp, TackyFunction* tf) {
+  TackyVal src = EmitTacky(a, exp->post_fix.exp, tf);
+  TackyBinaryOp op;
+  switch(exp->post_fix.op) {
+    case POST_INCREMENT:
+      op = TACKY_ADD;
+      break;
+    case POST_DECREMENT:
+      op = TACKY_SUBTRACT;
+      break;
+    default:
+      fprintf(stderr, "unexpected unary assignment op\n");
+      exit(1);
+  }
+  TackyVal dst = {.type = TACKY_VAR};
+  sprintf(dst.identifier, "tmp.%d", tmp_count++);
+  TackyInstruction copy_instr = {
+      .type = TACKY_COPY,
+      .copy = (TackyCopy) {
+        .src = src,
+        .dst = dst,
+      }
+  };
+  AppendInstruction(a, tf, copy_instr);
+  // Add or subtract one, then throw it back into the src.
+  TackyInstruction instr = {
+      .type = TACKY_BINARY,
+      .binary = (TackyBinary) {
+          .op = op,
+          .left = src,
+          .right = (TackyVal) {
+              .const_val = 1,
+          },
+          .dst = src
+      }
+  };
+  AppendInstruction(a, tf, instr);
+  return dst;
+}
+
 TackyVal EmitTacky(Arena* arena, Exp* exp, TackyFunction* tf) {
   switch (exp->type) {
     case eConst: {
@@ -194,6 +264,9 @@ TackyVal EmitTacky(Arena* arena, Exp* exp, TackyFunction* tf) {
       return const_val;
     }
     case eUnaryExp: {
+      if (IsUnaryAssignment(exp->unary_exp.op_type)) {
+        return EmitUnaryAssignment(arena, exp, tf);
+      }
       TackyVal src = EmitTacky(arena, exp->unary_exp.exp, tf);
       TackyVal dst = {.type = TACKY_VAR};
       sprintf(dst.identifier, "tmp.%d", tmp_count++);
@@ -207,6 +280,8 @@ TackyVal EmitTacky(Arena* arena, Exp* exp, TackyFunction* tf) {
       AppendInstruction(arena, tf, t_instr);
       return dst;
     }
+    case ePostFix:
+      return EmitPostfixAssignment(arena, exp, tf);
     case eBinaryExp: {
       if (ShouldExpandBinary(exp)) {
         return ExpandBinaryExp(arena, exp->binary_exp, tf);

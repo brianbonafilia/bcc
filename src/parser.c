@@ -8,6 +8,16 @@
 Exp* ParseFactor(Arena* arena, TokenList* list);
 Exp* ParseExp(Arena* arena, TokenList* list, int min_precedence);
 
+bool IsUnaryAssignment(UnaryOp op) {
+  switch(op) {
+    case PRE_INCREMENT:
+    case PRE_DECREMENT:
+      return true;
+    default:
+      return false;
+  }
+}
+
 void ExpectTokenType(Token token, TokenType type) {
   if (token.type != type) {
     fprintf(stderr, "Expected type %s but got type %s\n", TokenTypeStr(type),
@@ -24,9 +34,35 @@ UnaryOp GetOp(TokenType type) {
       return NEGATE;
     case tLogicalNot:
       return LOGICAL_NOT;
+    case tIncrement:
+      return PRE_INCREMENT;
+    case tDecrement:
+      return PRE_DECREMENT;
     default:
       fprintf(stderr, "encountered bad unary op\n");
       exit(1);
+  }
+}
+
+PostFixOp ToPostFixOp(TokenType t) {
+  switch(t) {
+    case tIncrement:
+      return POST_INCREMENT;
+    case tDecrement:
+      return POST_DECREMENT;
+    default:
+      fprintf(stderr, "Invalid postfix op\n");
+      exit(1);
+  }
+}
+
+bool IsPostFixOp(TokenType t) {
+  switch (t) {
+    case tIncrement:
+    case tDecrement:
+      return true;
+    default:
+      return false;
   }
 }
 
@@ -37,6 +73,8 @@ Exp* ParseFactorInner(Arena* arena, TokenList* list) {
     case tTilde:
     case tMinus:
     case tLogicalNot:
+    case tIncrement:
+    case tDecrement:
       e = arena_alloc(arena, sizeof(Exp));
       e->type = eUnaryExp;
       e->unary_exp.op_type = GetOp(token.type);
@@ -45,23 +83,36 @@ Exp* ParseFactorInner(Arena* arena, TokenList* list) {
     case tOpenParen:
       e = ParseExp(arena, list, 0);
       ExpectTokenType(DequeueToken(list), tCloseParen);
-      return e;
+      break;
     case tConstant:
       // TODO: use more proper parsing here. Or store const ints as ints.
       e = arena_alloc(arena, sizeof(Exp));
       e->const_val = atoi(token.value);
-      return e;
+      break;
     case tIdentifier:
       e = arena_alloc(arena, sizeof(Exp));
       e->type = eVar;
       e->identifier = arena_alloc(arena, strlen(token.value) + 1);
       strcpy(e->identifier, token.value);
-      return e;
+      break;
     default:
       fprintf(stderr, "Unexpected token encountered parsing a factor: %s\n",
               TokenTypeStr(token.type));
       exit(2);
   }
+  Token* next_token = &list->tokens[0];
+  while (IsPostFixOp(next_token->type)) {
+      Exp* next = arena_alloc(arena, sizeof(Exp));
+      next->type = ePostFix;
+      next->post_fix = (PostFix){
+          .exp = e,
+          .op = ToPostFixOp(next_token->type)
+      };
+      e = next;
+      DequeueToken(list);
+      next_token = &list->tokens[0];
+    }
+  return e;
 }
 
 Exp* ParseFactor(Arena* arena, TokenList* list) {
@@ -112,6 +163,7 @@ BinaryOp ParseBinop(Token token) {
       exit(2);
   }
 }
+
 
 // Works for now, probably could be done more efficiently.
 bool IsBinaryOp(TokenType t) {

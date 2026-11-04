@@ -111,8 +111,7 @@ Token NextToken(FILE *fp) {
     case '-':
       c = fgetc(fp);
       if (c == '-') {
-        result.type = tInvalidToken;
-        strcpy("--", result.value);
+        result.type = tDecrement;
         return result;
       } else if (c == '=') {
         result.type = tMinusEquals;
@@ -124,8 +123,7 @@ Token NextToken(FILE *fp) {
     case '+':
       c = fgetc(fp);
       if (c == '+') {
-        result.type = tInvalidToken;
-        strcpy("++", result.value);
+        result.type = tIncrement;
         return result;
       } else if (c == '=') {
         result.type = tPlusEquals;
