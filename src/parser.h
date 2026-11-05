@@ -6,8 +6,11 @@
  * <function> ::= "int" <identifier> "(" "void" ")" "{" { <block_item> } "}"
  * <block_item> ::= <statement> | <declaration>
  * <declaration> ::= "int" <identifier> [ "=" <exp> ] ";"
- * <statement> ::= "return" <exp> ";" | <exp> ";" | ";"
- * <exp> ::= <factor> | <exp> <binop> <exp>
+ * <statement> ::= "return" <exp> ";"
+ *      | <exp> ";"
+ *      | "if" "(" <exp> ")" <statement> [ "else" <statement> ]
+ *      | ";"
+ * <exp> ::= <factor> | <exp> <binop> <exp> | <exp> "?" <exp> ":" <exp>
  * <factor> ::= <int> | <identifier> | <unop> <factor> | "(" <exp> ")"
  * <unop> ::= "-" | "~" | "!" | "++" | "--"
  * <postfix> ::= "++" | "--"
@@ -21,13 +24,17 @@
  * program = Program(function_definition()
  * function_definition = Function(identifier name, block_item* body)
  * block_item = S(statement) | D(declaration)
- * statement = Return(exp) | Expression(exp) | null
+ * statement = Return(exp)
+ *    | Expression(exp)
+ *    | If(exp condition, statement then, statement? else)
+ *    | null
  * exp = Constant(int)
  *    | Var(identifier)
  *    | Unary(unary_operator, exp)
  *    | PostFix(exp, postfix_operator)
  *    | Binary(binary_operator, exp, exp)
  *    | Assignment(exp, exp)
+ *    | Conditional(exp condition, exp, exp)
  * unary_operator = Complement | Negate | Logical Not | PreIncrement | PreDecrement
  * postfix_operator = PostIncrement | PostDecrement
  * binary_operator = Subtract | Add | Multiply | Divide | Remainder | Logical And
@@ -42,7 +49,9 @@
 #include "lexer.h"
 
 typedef struct Exp Exp;
+typedef struct ConditionalExp ConditionalExp;
 typedef struct Statement Statement;
+typedef struct IfStatement IfStatement;
 typedef struct Declaration Declaration;
 typedef struct Assignment Assignment;
 typedef struct BlockItem BlockItem;
@@ -55,6 +64,7 @@ typedef enum {
   eVar,
   ePostFix,
   eAssignment,
+  eConditional
 } ExpType;
 
 typedef enum {
@@ -99,6 +109,7 @@ typedef enum {
 typedef enum {
   S_RETURN,
   S_EXP,
+  S_IF,
   S_NULL
 } StatementType;
 
@@ -138,6 +149,12 @@ struct PostFix {
   PostFixOp op;
 };
 
+struct ConditionalExp {
+  Exp* cond;
+  Exp* left;
+  Exp* right;
+};
+
 struct Exp {
   ExpType type;
   union {
@@ -147,6 +164,7 @@ struct Exp {
     UnaryExp unary_exp;
     BinaryExp binary_exp;
     PostFix post_fix;
+    ConditionalExp conditional_exp;
   };
 };
 
@@ -158,9 +176,19 @@ struct BlockItem {
   };
 };
 
+struct IfStatement {
+  Exp* cond;
+  Statement* statement;
+  bool has_else;
+  Statement* else_statement;
+};
+
 struct Statement {
   StatementType type;
-  Exp* exp;
+  union {
+    Exp* exp;
+    IfStatement* if_statement;
+  };
 };
 
 struct Declaration {

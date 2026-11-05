@@ -70,9 +70,71 @@ void PrintUnary(UnaryExp unary_exp, int padding) {
     case LOGICAL_NOT:
       op = "Not";
       break;
+    case PRE_INCREMENT:
+      op = "PreIncrement";
+      break;
+    case PRE_DECREMENT:
+      op = "PreDecrement";
+      break;
   }
   printf("%*s%s,\n", padding, "", op);
   PrintExpression(unary_exp.exp, padding);
+}
+
+void PrintPostfix(PostFix post_fix, int padding) {
+  char* op;
+  switch (post_fix.op) {
+    case POST_INCREMENT:
+      op = "PostIncrement";
+      break;
+    case POST_DECREMENT:
+      op = "PostDecrement";
+      break;
+  }
+  printf("%*s%s,\n", padding, "", op);
+  PrintExpression(post_fix.exp, padding);
+}
+
+void PrintAssignment(Assignment a, int padding) {
+  char* type;
+  switch(a.type) {
+    case A_EQUALS:
+      type = "Equals";
+      break;
+    case A_PLUS_EQUALS:
+      type = "PlusEquals";
+      break;
+    case A_MINUS_EQUALS:
+      type = "MinusEquals";
+      break;
+    case A_DIVIDE_EQUALS:
+      type = "DivideEquals";
+      break;
+    case A_MULTIPLY_EQUALS:
+      type = "MultiplyEquals";
+      break;
+    case A_MODULO_EQUALS:
+      type = "ModuloEquals";
+      break;
+    case A_AND_EQUALS:
+      type = "AndEquals";
+      break;
+    case A_OR_EQUALS:
+      type = "OrEquals";
+      break;
+    case A_XOR_EQUALS:
+      type = "XorEquals";
+      break;
+    case A_R_SHIFT_EQUALS:
+      type = "RightShiftEquals";
+      break;
+    case A_L_SHIFT_EQUALS:
+      type = "LeftShiftEquals";
+      break;
+  }
+  printf("%*s%s, \n", padding, "", type);
+  PrintExpression(a.left, padding);
+  PrintExpression(a.right, padding);
 }
 
 void PrintExpression(Exp* exp, int padding) {
@@ -91,18 +153,62 @@ void PrintExpression(Exp* exp, int padding) {
       PrintBinary(exp->binary_exp, padding + 2);
       printf("%*s)\n", padding, "");
       return;
+    case eAssignment:
+      printf("%*sAssignment(\n", padding, "");
+      PrintAssignment(exp->assignment, padding + 2);
+      printf("%*s)\n", padding, "");
+      return;
+    case ePostFix:
+      printf("%*sPostFix(\n", padding, "");
+      PrintPostfix(exp->post_fix, padding + 2);
+      printf("%*s)\n", padding, "");
+      return;
+    case eVar:
+      printf("%*sVar(%s)\n", padding, "", exp->identifier);
+      return;
   }
 }
 
 void PrintStatement(Statement* statement, int padding) {
-  PrintExpression(statement->exp, padding);
+  switch (statement->type) {
+    case S_RETURN:
+      printf("%*sReturn(\n", padding, "");
+      break;
+    case S_EXP:
+      printf("%*sExp(\n", padding, "");
+      break;
+    case S_NULL:
+      printf("%*sNull()\n", padding, "");
+      return;
+  }
+  PrintExpression(statement->exp, padding + 2);
+  printf("%*s),\n", padding, "");
+}
+
+void PrintDeclaration(Declaration* declaration, int padding) {
+  printf("%*sDeclaration(\n", padding, "");
+  printf("%*s  %s,\n", padding, "", declaration->identifier);
+  if (declaration->init == NULL) {
+    printf("%*s  %s", padding, "", "NULL");
+  } else {
+    PrintExpression(declaration->init, padding + 2);
+  }
+  printf("%*s),\n", padding, "");
 }
 
 void PrintFunction(Function* function, int padding) {
   printf("%*sname = \"%s\"\n", padding, "", function->name);
-  printf("%*sbody = Return(\n", padding, "");
-//  PrintStatement(function->statement, padding + 2);
-  printf("%*s)\n", padding, "");
+  printf("%*sbody = {\n", padding, "");
+  for (int i = 0; i < function->item_list.length; ++i) {
+    switch (function->item_list.items[i]->type) {
+      case B_STATEMENT:
+        PrintStatement(function->item_list.items[i]->statement, padding + 2);
+        break;
+      case B_DECLARATION:
+        PrintDeclaration(function->item_list.items[i]->declaration, padding+2);
+    }
+  }
+  printf("%*s}\n", padding, "");
 }
 
 void PrettyPrintAST(Program* program) {
@@ -238,7 +344,7 @@ void PrintTackyInstruction(TackyInstruction* instr, int padding) {
       PrintTackyJmpCC(instr->jump_cond, padding);
       return;
     case TACKY_COPY:
-      printf("%*sCOPY(");
+      printf("%*sCOPY(", padding, "");
       PrintTackyVal(instr->copy.src);
       printf(" , ");
       PrintTackyVal(instr->copy.dst);

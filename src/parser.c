@@ -197,6 +197,7 @@ bool IsBinaryOp(TokenType t) {
     case tGreaterThan:
     case tLessOrEqual:
     case tGreaterOrEqual:
+    case tTernaryQuestion:
       return true;
     default:
       return false;
@@ -232,6 +233,8 @@ int Precedence(TokenType t) {
       return 10;
     case tLogicalOr:
       return 5;
+    case tTernaryQuestion:
+      return 3;
     case tPlusEquals:
     case tMinusEquals:
     case tMultiplyEquals:
@@ -300,6 +303,12 @@ AssignmentType ToAssignmentType(TokenType t) {
   }
 }
 
+Exp* ParseConditionalMiddle(Arena* a, TokenList* list) {
+  ExpectTokenType(DequeueToken(list), tTernaryQuestion);
+  ParseExp(a, list, 0);
+  ExpectTokenType(DequeueToken(list), tTernaryColon);
+}
+
 Exp* ParseExp(Arena* arena, TokenList* list, int min_precedence) {
   Exp* left = ParseFactor(arena, list);
   Token* next_token = &list->tokens[0];
@@ -318,7 +327,22 @@ Exp* ParseExp(Arena* arena, TokenList* list, int min_precedence) {
           }
       };
       left = a;
-    } else {
+    } else if (next_token->type == tTernaryQuestion){
+      Exp* middle = ParseConditionalMiddle(arena, list);
+      // Since it is right associative, we set the precedence to next_token, rather than
+      // adding 1 like we do elsewhere.
+      Exp* right = ParseExp(arena, list, Precedence(next_token->type));
+      left = arena_alloc(arena, sizeof(Exp));
+      *left = (Exp){
+        .type = eConditional,
+        .conditional_exp = (ConditionalExp){
+          .cond = left,
+          .left = middle,
+          .right = right
+        },
+      };
+    }
+    else {
       BinaryOp op = ParseBinop(DequeueToken(list));
       Exp* right = ParseExp(arena, list, Precedence(next_token->type) + 1);
       Exp* binexp = arena_alloc(arena, sizeof(Exp));
@@ -343,16 +367,30 @@ Statement* ParseStatement(Arena* arena, TokenList* list) {
   switch (token.type) {
     case tReturn:
       s->type = S_RETURN;
-      s->exp = ParseExp(arena, list, 0);
+      s->exp = ParseExp(arena, list, /*min_precedence=*/0);
       ExpectTokenType(DequeueToken(list), tSemicolin);
       return s;
     case tSemicolin:
       s->type = S_NULL;
       return s;
+    case tIf:
+      s->type = S_IF;
+      ExpectTokenType(DequeueToken(list), tOpenParen);
+      s->if_statement = arena_alloc(arena, sizeof(IfStatement));
+      s->if_statement->cond = ParseExp(arena, list, /*min_precedence=*/0);
+      ExpectTokenType(DequeueToken(list), tCloseParen);
+      s->if_statement->statement = ParseStatement(arena, list);
+      if (DequeueToken(list).type == tElse) {
+        s->if_statement->has_else = true;
+        s->if_statement->else_statement = ParseStatement(arena, list);
+      } else {
+        list->tokens--;
+      }
+      return s;
     default:
       s->type = S_EXP;
       list->tokens--;
-      s->exp = ParseExp(arena, list, 0);
+      s->exp = ParseExp(arena, list, /*min_precedence=*/0);
       ExpectTokenType(DequeueToken(list), tSemicolin);
       return s;
   }

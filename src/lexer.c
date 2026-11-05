@@ -52,6 +52,14 @@ Token GetAlphaToken(FILE *fp) {
       result.type = tVoid;
       return result;
     }
+    if (strcmp(result.value, "if") == 0) {
+      result.type = tIf;
+      return result;
+    }
+    if (strcmp(result.value, "else") == 0) {
+      result.type = tElse;
+      return result;
+    }
     result.type = tIdentifier;
     return result;
   }
@@ -256,6 +264,12 @@ Token NextToken(FILE *fp) {
       result.type = tGreaterThan;
       return result;
     }
+    case '?':
+      result.type = tTernaryQuestion;
+      return result;
+    case ':':
+      result.type = tTernaryColon;
+      return result;
     case 'a' ... 'z':
     case 'A' ... 'Z':
     case '_':
