@@ -323,12 +323,16 @@ void AppendArmInstruction(Arena* arena, ArmFunction* arm_func, TackyInstruction 
     case TACKY_RETURN: {
       AllocInstr(arena, arm_func);
       AllocInstr(arena, arm_func);
+      AllocInstr(arena, arm_func);
       Mov mov;
       mov.src = TackyValToArmVal(t_instr.return_val);
       mov.dst = (Operand) {.type = REGISTER, .reg = W0};
       arm_func->instructions[arm_func->length++] = (Instruction) {
           .type = MOV,
           .mov = mov
+      };
+      arm_func->instructions[arm_func->length++] = (Instruction) {
+          .type = DEALLOC_STACK
       };
       arm_func->instructions[arm_func->length++] = (Instruction) {
           .type = RET
@@ -466,9 +470,13 @@ void UpdateInstructions(Arena* arena, ArmFunction* func) {
   next_list_instr[0] = (Instruction) {
       .type = ALLOC_STACK, .alloc_stack = (AllocStack) {.size = largest_stack}
   };
-  next_list_instr[pos++] = (Instruction) {
-      .type = DEALLOC_STACK, .alloc_stack = (AllocStack) {.size = largest_stack}
-  };
+  for (int i = 0; i < func->length; ++i) {
+    if (next_list_instr[i].type == DEALLOC_STACK) {
+      next_list_instr[i].alloc_stack = (AllocStack) {
+        .size = largest_stack,
+      };
+    }
+  }
   next_list_instr[pos] = (Instruction) {.type = RET};
   func->instructions = next_list_instr;
   func->length += 2;

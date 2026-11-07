@@ -305,8 +305,9 @@ AssignmentType ToAssignmentType(TokenType t) {
 
 Exp* ParseConditionalMiddle(Arena* a, TokenList* list) {
   ExpectTokenType(DequeueToken(list), tTernaryQuestion);
-  ParseExp(a, list, 0);
+  Exp* e = ParseExp(a, list, 0);
   ExpectTokenType(DequeueToken(list), tTernaryColon);
+  return e;
 }
 
 Exp* ParseExp(Arena* arena, TokenList* list, int min_precedence) {
@@ -327,13 +328,13 @@ Exp* ParseExp(Arena* arena, TokenList* list, int min_precedence) {
           }
       };
       left = a;
-    } else if (next_token->type == tTernaryQuestion){
+    } else if (next_token->type == tTernaryQuestion) {
       Exp* middle = ParseConditionalMiddle(arena, list);
       // Since it is right associative, we set the precedence to next_token, rather than
       // adding 1 like we do elsewhere.
       Exp* right = ParseExp(arena, list, Precedence(next_token->type));
-      left = arena_alloc(arena, sizeof(Exp));
-      *left = (Exp){
+      Exp* new_left = arena_alloc(arena, sizeof(Exp));
+      *new_left = (Exp){
         .type = eConditional,
         .conditional_exp = (ConditionalExp){
           .cond = left,
@@ -341,6 +342,7 @@ Exp* ParseExp(Arena* arena, TokenList* list, int min_precedence) {
           .right = right
         },
       };
+      left = new_left;
     }
     else {
       BinaryOp op = ParseBinop(DequeueToken(list));

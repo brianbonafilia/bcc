@@ -77,7 +77,7 @@ TackyBinaryOp ConvertBinaryOp(BinaryOp op) {
 }
 
 TackyBinaryOp BinaryAssignmentOp(AssignmentType a) {
-  switch(a) {
+  switch (a) {
     case A_MODULO_EQUALS:
       return TACKY_REMAINDER;
     case A_PLUS_EQUALS:
@@ -115,13 +115,27 @@ bool ShouldExpandBinary(Exp* exp) {
   }
 }
 
+void AssignIfJmpLabel(IfJumpType t, char* dst) {
+  switch (t) {
+    case I_JMP_ELSE:
+      snprintf(dst, 20, "else_%d", label_count++);
+      return;
+    case I_JMP_END:
+      snprintf(dst, 20, "end_%d", label_count++);
+      return;
+    default:
+      fprintf(stderr, "unexpected if jmp type\n");
+      exit(1);
+  }
+}
+
 void AssignLabel(BinaryOp op, char* dst) {
   switch (op) {
     case LOGICAL_AND:
-      snprintf(dst, 20, "false_%d", label_count);
+      snprintf(dst, 20, "false_%d", label_count++);
       return;
     case LOGICAL_OR:
-      snprintf(dst, 20, "true_%d", label_count);
+      snprintf(dst, 20, "true_%d", label_count++);
       return;
     default:
       fprintf(stderr, "bad label op code\n");
@@ -150,7 +164,6 @@ TackyVal ExpandBinaryExp(Arena* arena, BinaryExp exp, TackyFunction* tf) {
   BuildBinaryJmp(exp.op, &jmp);
   jmp.jump_cond.val = EmitTacky(arena, exp.left, tf);
   AssignLabel(exp.op, jmp.jump_cond.target);
-  label_count++;
   AppendInstruction(arena, tf, jmp);
   // do the same for the right. reusing jmp.
   jmp.jump_cond.val = EmitTacky(arena, exp.right, tf);
@@ -158,13 +171,13 @@ TackyVal ExpandBinaryExp(Arena* arena, BinaryExp exp, TackyFunction* tf) {
   // if we make it this far, mark as true if AND false if OR. and jump to end
   TackyInstruction copy = {
       .type = TACKY_COPY,
-      .copy = (TackyCopy ) {
+      .copy = (TackyCopy) {
           .src = (TackyVal) {
               .type = TACKY_CONST,
               .const_val = exp.op == LOGICAL_AND ? 1 : 0,
           },
           .dst = (TackyVal) {
-            .type = TACKY_VAR,
+              .type = TACKY_VAR,
           }
       }
   };
@@ -190,7 +203,7 @@ TackyVal ExpandBinaryExp(Arena* arena, BinaryExp exp, TackyFunction* tf) {
 TackyVal EmitUnaryAssignment(Arena* a, Exp* exp, TackyFunction* tf) {
   TackyVal src = EmitTacky(a, exp->unary_exp.exp, tf);
   TackyBinaryOp op;
-  switch(exp->unary_exp.op_type) {
+  switch (exp->unary_exp.op_type) {
     case PRE_INCREMENT:
       op = TACKY_ADD;
       break;
@@ -205,12 +218,12 @@ TackyVal EmitUnaryAssignment(Arena* a, Exp* exp, TackyFunction* tf) {
   TackyInstruction instr = {
       .type = TACKY_BINARY,
       .binary = (TackyBinary) {
-        .op = op,
-        .left = src,
-        .right = (TackyVal) {
-          .const_val = 1,
-        },
-        .dst = src
+          .op = op,
+          .left = src,
+          .right = (TackyVal) {
+              .const_val = 1,
+          },
+          .dst = src
       }
   };
   AppendInstruction(a, tf, instr);
@@ -220,7 +233,7 @@ TackyVal EmitUnaryAssignment(Arena* a, Exp* exp, TackyFunction* tf) {
 TackyVal EmitPostfixAssignment(Arena* a, Exp* exp, TackyFunction* tf) {
   TackyVal src = EmitTacky(a, exp->post_fix.exp, tf);
   TackyBinaryOp op;
-  switch(exp->post_fix.op) {
+  switch (exp->post_fix.op) {
     case POST_INCREMENT:
       op = TACKY_ADD;
       break;
@@ -236,8 +249,8 @@ TackyVal EmitPostfixAssignment(Arena* a, Exp* exp, TackyFunction* tf) {
   TackyInstruction copy_instr = {
       .type = TACKY_COPY,
       .copy = (TackyCopy) {
-        .src = src,
-        .dst = dst,
+          .src = src,
+          .dst = dst,
       }
   };
   AppendInstruction(a, tf, copy_instr);
@@ -262,6 +275,59 @@ TackyVal EmitTacky(Arena* arena, Exp* exp, TackyFunction* tf) {
     case eConst: {
       TackyVal const_val = {.type = TACKY_CONST, .const_val =  exp->const_val};
       return const_val;
+    }
+    case eConditional: {
+      TackyVal c = EmitTacky(arena, exp->conditional_exp.cond, tf);
+      TackyInstruction t_instr = {
+          .type = TACKY_JMP_Z,
+          .jump_cond = (JumpCond) {
+              .val = c,
+          }
+      };
+      AssignIfJmpLabel(I_JMP_ELSE, t_instr.jump_cond.target);
+      AppendInstruction(arena, tf, t_instr);
+      char* else_label = strdup(t_instr.jump_cond.target);
+      TackyVal if_val = EmitTacky(arena, exp->conditional_exp.left, tf);
+      TackyVal result = {
+          .type = TACKY_VAR
+      };
+      sprintf(result.identifier, "tmp.%d", tmp_count++);
+      t_instr = (TackyInstruction) {
+          .type = TACKY_COPY,
+          .copy = (TackyCopy) {
+              .src = if_val,
+              .dst = result
+          }
+      };
+      AppendInstruction(arena, tf, t_instr);
+      t_instr = (TackyInstruction) {
+          .type = TACKY_JMP,
+      };
+      AssignIfJmpLabel(I_JMP_END, t_instr.label);
+      char* end_label = strdup(t_instr.label);
+      AppendInstruction(arena, tf, t_instr);
+      t_instr = (TackyInstruction) {
+          .type = TACKY_LABEL
+      };
+      snprintf(t_instr.label, 20, "%s", else_label);
+      AppendInstruction(arena, tf, t_instr);
+      TackyVal else_val = EmitTacky(arena, exp->conditional_exp.right, tf);
+      t_instr = (TackyInstruction) {
+          .type = TACKY_COPY,
+          .copy = (TackyCopy) {
+              .src = else_val,
+              .dst = result
+          }
+      };
+      AppendInstruction(arena, tf, t_instr);
+      t_instr = (TackyInstruction) {
+          .type = TACKY_LABEL
+      };
+      snprintf(t_instr.label, 20, "%s", end_label);
+      AppendInstruction(arena, tf, t_instr);
+      free(end_label);
+      free(else_label);
+      return result;
     }
     case eUnaryExp: {
       if (IsUnaryAssignment(exp->unary_exp.op_type)) {
@@ -307,14 +373,14 @@ TackyVal EmitTacky(Arena* arena, Exp* exp, TackyFunction* tf) {
       sprintf(dst.identifier, "%s", exp->assignment.left->identifier);
       TackyInstruction t_instr;
       if (exp->assignment.type == A_EQUALS) {
-        t_instr = (TackyInstruction){
+        t_instr = (TackyInstruction) {
             .type = TACKY_COPY,
             .copy.src = right,
             .copy.dst = dst,
         };
       } else {
         TackyBinaryOp op = BinaryAssignmentOp(exp->assignment.type);
-        t_instr = (TackyInstruction){
+        t_instr = (TackyInstruction) {
             .type = TACKY_BINARY,
             .binary.op = op,
             .binary.left = dst,
@@ -324,67 +390,119 @@ TackyVal EmitTacky(Arena* arena, Exp* exp, TackyFunction* tf) {
       }
       AppendInstruction(arena, tf, t_instr);
       return dst;
-      }
-      case eVar: {
-        TackyVal dst = {.type = TACKY_VAR};
-        sprintf(dst.identifier, "%s", exp->identifier);
-        return dst;
-      }
-
-  }
-}
-
-TackyFunction* EmitTackyFunction(Arena* arena, Function* func) {
-  TackyFunction* tf = arena_alloc(arena, sizeof(TackyFunction));
-  tf->identifier = func->name;
-  tf->instr_length = 0;
-  bool returnLast = false;
-  for (int i = 0; i < func->item_list.length; ++i) {
-    returnLast = false;
-    BlockItem*  item = func->item_list.items[i];
-    switch (item->type) {
-      case B_DECLARATION:
-        if (item->declaration->init == NULL)
-          continue;
-        TackyVal v = EmitTacky(arena, item->declaration->init, tf);
-        TackyVal dst = {.type = TACKY_VAR};
-        sprintf(dst.identifier, "%s", item->declaration->identifier);
-        TackyInstruction t_instr = {
-            .type = TACKY_COPY,
-            .copy.src = v,
-            .copy.dst = dst,
-        };
-        AppendInstruction(arena, tf, t_instr);
-        break;
-      case B_STATEMENT:
-        if (item->statement->type == S_NULL) {
-          continue;
-        } else if (item->statement->type == S_EXP) {
-          EmitTacky(arena, item->statement->exp, tf);
-        } else if (item->statement->type == S_RETURN) {
-          TackyVal src = EmitTacky(arena, item->statement->exp, tf);
-          TackyInstruction return_instr = {
-              .type = TACKY_RETURN,
-              .return_val = src
-          };
-          AppendInstruction(arena, tf, return_instr);
-          returnLast = true;
-        }
     }
+    case eVar: {
+      TackyVal dst = {.type = TACKY_VAR};
+      sprintf(dst.identifier, "%s", exp->identifier);
+      return dst;
+    }
+
   }
-  if (!returnLast) {
-    TackyInstruction ret = {
-        .type = TACKY_RETURN,
-        .return_val = (TackyVal) { .const_val = 0 },
-    };
-    AppendInstruction(arena, tf, ret);
-  }
-  return tf;
 }
 
-TackyProgram* EmitTackyProgram(Arena* arena, Program* program) {
-  TackyProgram* pgrm = arena_alloc(arena, sizeof(TackyProgram));
-  pgrm->function_def = EmitTackyFunction(arena, program->function);
-  return pgrm;
-} 
+// EmitTackyStatement emits tacky code, and returns true if the statement is a return statement.
+bool EmitTackyStatement(Arena* a, Statement* s, TackyFunction* tf) {
+  switch (s->type) {
+    case S_NULL:
+      return false;
+    case S_IF: {
+      TackyVal c = EmitTacky(a, s->if_statement->cond, tf);
+      TackyInstruction t_instr = {
+          .type = TACKY_JMP_Z,
+          .jump_cond = (JumpCond) {
+              .val = c,
+          }
+      };
+      if (s->if_statement->has_else) {
+        AssignIfJmpLabel(I_JMP_ELSE, t_instr.label);
+        TackyInstruction t_jmp = {
+            .type = TACKY_JMP
+        };
+        AssignIfJmpLabel(I_JMP_END, t_jmp.label);
+        AppendInstruction(a, tf, t_instr);
+        EmitTackyStatement(a, s->if_statement->statement, tf);
+        AppendInstruction(a, tf, t_jmp);
+        TackyInstruction t_label = {
+            .type = TACKY_LABEL,
+        };
+        snprintf(t_label.label, 20, "%s", t_instr.label);
+        AppendInstruction(a, tf, t_label);
+        EmitTackyStatement(a, s->if_statement->else_statement, tf);
+        // reuse label instr for end label
+        snprintf(t_label.label, 20, "%s", t_jmp.label);
+        AppendInstruction(a, tf, t_label);
+        return false;
+      }
+      AssignIfJmpLabel(I_JMP_END, t_instr.label);
+      AppendInstruction(a, tf, t_instr);
+      EmitTackyStatement(a, s->if_statement->statement, tf);
+      TackyInstruction t_label = {
+          .type = TACKY_LABEL,
+      };
+      snprintf(t_label.label, 20, "%s", t_instr.label);
+      AppendInstruction(a, tf, t_label);
+      return false;
+    }
+    case S_EXP:
+      EmitTacky(a, s->exp, tf);
+      return false;
+    case S_RETURN: {
+      TackyVal src = EmitTacky(a, s->exp, tf);
+      TackyInstruction return_instr = {
+          .type = TACKY_RETURN,
+          .return_val = src
+      };
+      AppendInstruction(a, tf, return_instr);
+      return true;
+    }
+    default:
+      fprintf(stderr, "unexpected statement type\n");
+      exit(1);
+  }
+}
+
+  TackyFunction* EmitTackyFunction(Arena* arena, Function* func) {
+    TackyFunction* tf = arena_alloc(arena, sizeof(TackyFunction));
+    tf->identifier = func->name;
+    tf->instr_length = 0;
+    bool returnLast = false;
+    for (int i = 0; i < func->item_list.length; ++i) {
+      returnLast = false;
+      BlockItem* item = func->item_list.items[i];
+      switch (item->type) {
+        case B_DECLARATION:
+          if (item->declaration->init == NULL)
+            continue;
+          TackyVal v = EmitTacky(arena, item->declaration->init, tf);
+          TackyVal dst = {.type = TACKY_VAR};
+          sprintf(dst.identifier, "%s", item->declaration->identifier);
+          TackyInstruction t_instr = {
+              .type = TACKY_COPY,
+              .copy.src = v,
+              .copy.dst = dst,
+          };
+          AppendInstruction(arena, tf, t_instr);
+          break;
+        case B_STATEMENT:
+          returnLast = EmitTackyStatement(arena, item->statement, tf);
+          break;
+      }
+    }
+    // If a function doesn't end with a return statement, we will help out by
+    // simply returning 0.
+    if (!returnLast) {
+      TackyInstruction ret = {
+          .type = TACKY_RETURN,
+          .return_val = (TackyVal) {.const_val = 0},
+      };
+      AppendInstruction(arena, tf, ret);
+    }
+    return tf;
+  }
+
+  TackyProgram* EmitTackyProgram(Arena* arena, Program* program) {
+    TackyProgram* pgrm = arena_alloc(arena, sizeof(TackyProgram));
+    pgrm->function_def = EmitTackyFunction(arena, program->function);
+    return pgrm;
+  }
 

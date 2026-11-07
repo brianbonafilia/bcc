@@ -107,6 +107,11 @@ typedef enum {
 } BinaryOp;
 
 typedef enum {
+  I_JMP_ELSE,
+  I_JMP_END
+} IfJumpType;
+
+typedef enum {
   S_RETURN,
   S_EXP,
   S_IF,

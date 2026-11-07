@@ -105,6 +105,13 @@ void ResolveDeclaration(VariableMap* m, Declaration* dec) {
 
 void ResolveStatement(VariableMap* m, Statement* statement) {
   switch(statement->type) {
+    case S_IF:
+      ResolveExp(m, statement->if_statement->cond);
+      ResolveStatement(m, statement->if_statement->statement);
+      if (statement->if_statement->has_else) {
+        ResolveStatement(m, statement->if_statement->else_statement);
+      }
+      return;
     case S_RETURN:
     case S_EXP:
       ResolveExp(m, statement->exp);
@@ -155,10 +162,16 @@ void ResolveExp(VariableMap* m, Exp* exp) {
       }
       ResolveExp(m, exp->unary_exp.exp);
       return;
+    case eConditional:
+      ResolveExp(m, exp->conditional_exp.left);
+      ResolveExp(m, exp->conditional_exp.cond);
+      ResolveExp(m, exp->conditional_exp.right);
+      return;
     case eConst:
       return;
     default:
       fprintf(stderr, "unknown expression type\n");
+      exit(1);
   }
 }
 
