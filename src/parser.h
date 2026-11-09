@@ -52,6 +52,7 @@ typedef struct Exp Exp;
 typedef struct ConditionalExp ConditionalExp;
 typedef struct Statement Statement;
 typedef struct IfStatement IfStatement;
+typedef struct GotoLabel GotoLabel;
 typedef struct Declaration Declaration;
 typedef struct Assignment Assignment;
 typedef struct BlockItem BlockItem;
@@ -115,7 +116,9 @@ typedef enum {
   S_RETURN,
   S_EXP,
   S_IF,
-  S_NULL
+  S_NULL,
+  S_GOTO,
+  S_GOTO_LABEL
 } StatementType;
 
 typedef struct {
@@ -188,11 +191,18 @@ struct IfStatement {
   Statement* else_statement;
 };
 
+struct GotoLabel {
+  char* identifier;
+  Statement* statement;
+};
+
 struct Statement {
   StatementType type;
   union {
     Exp* exp;
     IfStatement* if_statement;
+    char* goto_identifier;
+    GotoLabel* goto_label;
   };
 };
 

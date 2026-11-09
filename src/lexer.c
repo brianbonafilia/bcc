@@ -60,6 +60,10 @@ Token GetAlphaToken(FILE *fp) {
       result.type = tElse;
       return result;
     }
+    if (strcmp(result.value, "goto") == 0) {
+      result.type = tGoto;
+      return result;
+    }
     result.type = tIdentifier;
     return result;
   }
@@ -265,10 +269,10 @@ Token NextToken(FILE *fp) {
       return result;
     }
     case '?':
-      result.type = tTernaryQuestion;
+      result.type = tQuestion;
       return result;
     case ':':
-      result.type = tTernaryColon;
+      result.type = tColon;
       return result;
     case 'a' ... 'z':
     case 'A' ... 'Z':

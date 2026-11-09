@@ -9,7 +9,7 @@ Exp* ParseFactor(Arena* arena, TokenList* list);
 Exp* ParseExp(Arena* arena, TokenList* list, int min_precedence);
 
 bool IsUnaryAssignment(UnaryOp op) {
-  switch(op) {
+  switch (op) {
     case PRE_INCREMENT:
     case PRE_DECREMENT:
       return true;
@@ -45,7 +45,7 @@ UnaryOp GetOp(TokenType type) {
 }
 
 PostFixOp ToPostFixOp(TokenType t) {
-  switch(t) {
+  switch (t) {
     case tIncrement:
       return POST_INCREMENT;
     case tDecrement:
@@ -102,16 +102,16 @@ Exp* ParseFactorInner(Arena* arena, TokenList* list) {
   }
   Token* next_token = &list->tokens[0];
   while (IsPostFixOp(next_token->type)) {
-      Exp* next = arena_alloc(arena, sizeof(Exp));
-      next->type = ePostFix;
-      next->post_fix = (PostFix){
-          .exp = e,
-          .op = ToPostFixOp(next_token->type)
-      };
-      e = next;
-      DequeueToken(list);
-      next_token = &list->tokens[0];
-    }
+    Exp* next = arena_alloc(arena, sizeof(Exp));
+    next->type = ePostFix;
+    next->post_fix = (PostFix) {
+        .exp = e,
+        .op = ToPostFixOp(next_token->type)
+    };
+    e = next;
+    DequeueToken(list);
+    next_token = &list->tokens[0];
+  }
   return e;
 }
 
@@ -197,7 +197,7 @@ bool IsBinaryOp(TokenType t) {
     case tGreaterThan:
     case tLessOrEqual:
     case tGreaterOrEqual:
-    case tTernaryQuestion:
+    case tQuestion:
       return true;
     default:
       return false;
@@ -233,7 +233,7 @@ int Precedence(TokenType t) {
       return 10;
     case tLogicalOr:
       return 5;
-    case tTernaryQuestion:
+    case tQuestion:
       return 3;
     case tPlusEquals:
     case tMinusEquals:
@@ -304,9 +304,9 @@ AssignmentType ToAssignmentType(TokenType t) {
 }
 
 Exp* ParseConditionalMiddle(Arena* a, TokenList* list) {
-  ExpectTokenType(DequeueToken(list), tTernaryQuestion);
+  ExpectTokenType(DequeueToken(list), tQuestion);
   Exp* e = ParseExp(a, list, 0);
-  ExpectTokenType(DequeueToken(list), tTernaryColon);
+  ExpectTokenType(DequeueToken(list), tColon);
   return e;
 }
 
@@ -328,23 +328,22 @@ Exp* ParseExp(Arena* arena, TokenList* list, int min_precedence) {
           }
       };
       left = a;
-    } else if (next_token->type == tTernaryQuestion) {
+    } else if (next_token->type == tQuestion) {
       Exp* middle = ParseConditionalMiddle(arena, list);
       // Since it is right associative, we set the precedence to next_token, rather than
       // adding 1 like we do elsewhere.
       Exp* right = ParseExp(arena, list, Precedence(next_token->type));
       Exp* new_left = arena_alloc(arena, sizeof(Exp));
-      *new_left = (Exp){
-        .type = eConditional,
-        .conditional_exp = (ConditionalExp){
-          .cond = left,
-          .left = middle,
-          .right = right
-        },
+      *new_left = (Exp) {
+          .type = eConditional,
+          .conditional_exp = (ConditionalExp) {
+              .cond = left,
+              .left = middle,
+              .right = right
+          },
       };
       left = new_left;
-    }
-    else {
+    } else {
       BinaryOp op = ParseBinop(DequeueToken(list));
       Exp* right = ParseExp(arena, list, Precedence(next_token->type) + 1);
       Exp* binexp = arena_alloc(arena, sizeof(Exp));
@@ -375,6 +374,28 @@ Statement* ParseStatement(Arena* arena, TokenList* list) {
     case tSemicolin:
       s->type = S_NULL;
       return s;
+    case tGoto: {
+      s->type = S_GOTO;
+      Token t = DequeueToken(list);
+      ExpectTokenType(t, tIdentifier);
+      s->goto_identifier = arena_alloc(arena, strlen(t.value) + 1);
+      strcpy(s->goto_identifier, t.value);
+      ExpectTokenType(DequeueToken(list), tSemicolin);
+      return s;
+    }
+      // Add special handling for possible goto labels
+    case tIdentifier: {
+      if (DequeueToken(list).type != tColon) {
+        list->tokens--;
+        goto handle_default;
+      }
+      s->type = S_GOTO_LABEL;
+      s->goto_label = arena_alloc(arena, sizeof(GotoLabel));
+      s->goto_label->identifier = arena_alloc(arena, strlen(token.value) + 1);
+      strcpy(s->goto_label->identifier, token.value);
+      s->goto_label->statement = ParseStatement(arena, list);
+      return s;
+    }
     case tIf:
       s->type = S_IF;
       ExpectTokenType(DequeueToken(list), tOpenParen);
@@ -390,6 +411,7 @@ Statement* ParseStatement(Arena* arena, TokenList* list) {
       }
       return s;
     default:
+    handle_default:
       s->type = S_EXP;
       list->tokens--;
       s->exp = ParseExp(arena, list, /*min_precedence=*/0);

@@ -9,6 +9,7 @@
 
 const int default_capacity = 32;
 int variableCount = 0;
+int labelCount = 0;
 
 VariableMap* MakeVariableMap() {
   VariableMap* m = (VariableMap*) calloc(1, sizeof(VariableMap));
@@ -87,6 +88,11 @@ char* AssignName(char* dst, char* name) {
   return dst;
 }
 
+char* AssignGotoLabel(char* dst, char* name) {
+  sprintf(dst, "L%s%d", name, labelCount);
+  return dst;
+}
+
 void ResolveDeclaration(VariableMap* m, Declaration* dec) {
   char* v = VariableMapGet(m, dec->identifier);
   if (v == NULL) {
@@ -111,6 +117,11 @@ void ResolveStatement(VariableMap* m, Statement* statement) {
       if (statement->if_statement->has_else) {
         ResolveStatement(m, statement->if_statement->else_statement);
       }
+      return;
+    case S_GOTO_LABEL:
+      ResolveStatement(m, statement->goto_label->statement);
+      return;
+    case S_GOTO:
       return;
     case S_RETURN:
     case S_EXP:
@@ -175,6 +186,64 @@ void ResolveExp(VariableMap* m, Exp* exp) {
   }
 }
 
+void AddStatementGotoLabels(VariableMap* m, Statement* s) {
+  if (s->type == S_IF) {
+    AddStatementGotoLabels(m, s->if_statement->statement);
+    if (s->if_statement->has_else) {
+      AddStatementGotoLabels(m, s->if_statement->else_statement);
+    }
+  } else if (s->type == S_GOTO_LABEL) {
+    char* got = VariableMapGet(m, s->goto_label->identifier);
+    if (got != NULL) {
+      fprintf(stderr, "repeated goto label in the same function: %s\n",
+              s->goto_label->identifier);
+      exit(1);
+    }
+    char* v = malloc(sizeof(char) * 50);
+    // To prevent name collisions with functions we will fiddle with the label name.
+    // This is because function and labels can have the same name.
+    VariableMapPut(m, s->goto_label->identifier, AssignGotoLabel(v, s->goto_label->identifier));
+    s->goto_label->identifier = v;
+    AddStatementGotoLabels(m, s->goto_label->statement);
+  }
+}
+
+void CheckStatementGotoLabels(VariableMap* m, Statement* s) {
+  if (s->type == S_IF) {
+    CheckStatementGotoLabels(m, s->if_statement->statement);
+    if (s->if_statement->has_else) {
+      CheckStatementGotoLabels(m, s->if_statement->else_statement);
+    }
+  } else if (s->type == S_GOTO_LABEL) {
+    CheckStatementGotoLabels(m, s->goto_label->statement);
+  } if (s->type == S_GOTO) {
+    char* got = VariableMapGet(m, s->goto_identifier);
+    if (got == NULL) {
+      fprintf(stderr, "unknown jump label: %s\n", s->goto_identifier);
+      exit(1);
+    }
+    s->goto_identifier = got;
+  }
+}
+
+void ValidateGotoLabels(Function* f) {
+  VariableMap* map = MakeVariableMap();
+  // check for duplicate labels
+  for (int i = 0; i < f->item_list.length; ++i) {
+    BlockItem* item = f->item_list.items[i];
+    if (item->type == B_STATEMENT) {
+      AddStatementGotoLabels(map, item->statement);
+    }
+  }
+  // validate that goto jumps are to existing labels.
+  for (int i = 0; i < f->item_list.length; ++i) {
+    BlockItem* item = f->item_list.items[i];
+    if (item->type == B_STATEMENT) {
+      CheckStatementGotoLabels(map, item->statement);
+    }
+  }
+}
+
 void ResolveVariables(Function* f) {
   VariableMap* map = MakeVariableMap();
   for (int i = 0; i < f->item_list.length; ++i) {
@@ -192,4 +261,5 @@ void ResolveVariables(Function* f) {
 
 void AnalyzeSemantics(Program* program) {
   ResolveVariables(program->function);
+  ValidateGotoLabels(program->function);
 }

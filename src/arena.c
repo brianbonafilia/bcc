@@ -23,6 +23,7 @@ void* arena_alloc(Arena* arena, int size_in_bytes) {
   }
   void* ret = arena->next_ptr;
   arena->next_ptr += size_in_bytes;
+  arena->used += size_in_bytes;
   return ret;
 }
 

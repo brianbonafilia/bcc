@@ -8,6 +8,8 @@
 int main(int argc, char **argv) {
   // Make stdout line-buffered (flushes on every '\n') or unbuffered (_IONBF)
   setvbuf(stdout, NULL, _IOLBF, 0);
+  // Make stderr line-buffered (flushes on every '\n') or unbuffered (_IONBF)
+  setvbuf(stderr, NULL, _IOLBF, 0);
   if (argc < MIN_ARGUMENTS) {
     fprintf(stderr, "Incorrect number of arguments, got %d, expected "
                     "at least %d\n",

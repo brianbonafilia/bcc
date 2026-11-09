@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-#define BRK "{}();~-+*/%|^&<>="
+#define BRK "{}();~-+*/%|^&<>=:"
 
 static const char *TypeStr[] = {
     "tAssignment",
@@ -51,9 +51,10 @@ static const char *TypeStr[] = {
     "tLShiftEquals",
     "tIf",
     "tElse",
-    "tTernaryQuestion",
-    "tTernaryColon",
+    "tQuestion",
+    "tColon",
     "tRShiftEquals",
+    "tGoto",
     "tEof"
 };
 
@@ -104,8 +105,10 @@ typedef enum {
   tRShiftEquals,
   tIf,
   tElse,
-  tTernaryQuestion,
-  tTernaryColon,
+  tQuestion,
+  tColon,
+  tLabel,
+  tGoto,
   tEof
 } TokenType;
 

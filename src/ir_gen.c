@@ -443,6 +443,22 @@ bool EmitTackyStatement(Arena* a, Statement* s, TackyFunction* tf) {
       AppendInstruction(a, tf, t_label);
       return false;
     }
+    case S_GOTO: {
+      TackyInstruction t_jmp = {
+          .type = TACKY_JMP,
+      };
+      snprintf(t_jmp.label, 20, "%s", s->goto_identifier);
+      AppendInstruction(a, tf, t_jmp);
+      return false;
+    }
+    case S_GOTO_LABEL: {
+      TackyInstruction t_label = {
+          .type = TACKY_LABEL,
+      };
+      snprintf(t_label.label, 20, "%s", s->goto_label->identifier);
+      AppendInstruction(a, tf, t_label);
+      return EmitTackyStatement(a, s->goto_label->statement, tf);
+    }
     case S_EXP:
       EmitTacky(a, s->exp, tf);
       return false;
