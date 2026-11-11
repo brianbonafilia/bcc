@@ -11,9 +11,33 @@ const int default_capacity = 32;
 int variableCount = 0;
 int labelCount = 0;
 
+void ResolveBlock(VariableMap* map, Block* block);
+void AddBlockGotoLabels(VariableMap* map, Block* block);
+void CheckBlockGotoLabels(VariableMap* map, Block* block);
+
+// Lazy copying of variable map, probably ideal when smaller number
+// of variables. A direct memcpy seems like it could be ideal
+// at some size. Worth thinking about later.
+VariableMap* CopyVariableMap(VariableMap* m) {
+  VariableMap* copy = (VariableMap*) calloc(1, sizeof(VariableMap));
+  copy->variablesMap = (VariableKeyVal*) calloc(m->capacity, sizeof(VariableKeyVal));
+  copy->load_factor = 0.75;
+  copy->capacity = m->capacity;
+  for (int i = 0; i < m->capacity; ++i) {
+    if (m->variablesMap[i].key != NULL) {
+      copy->variablesMap[i] = (VariableKeyVal) {
+          .key = m->variablesMap[i].key,
+          .val = m->variablesMap[i].val,
+          .from_current_block = false
+      };
+    }
+  }
+  return copy;
+}
+
 VariableMap* MakeVariableMap() {
   VariableMap* m = (VariableMap*) calloc(1, sizeof(VariableMap));
-  m->variablesMap = (VariableKeyVal *) calloc(default_capacity, sizeof(VariableKeyVal*));
+  m->variablesMap = (VariableKeyVal*) calloc(default_capacity, sizeof(VariableKeyVal));
   m->load_factor = 0.75;
   m->capacity = default_capacity;
   return m;
@@ -22,21 +46,21 @@ VariableMap* MakeVariableMap() {
 // Uses fnv-1a hashing algorithm.
 uint32_t Hash(const char* key) {
   uint32_t hash = 0x811c9dc5;
-  for(int i = 0; !key[i]; ++i) {
-    hash ^= (uint32_t)key[i];
+  for (int i = 0; !key[i]; ++i) {
+    hash ^= (uint32_t) key[i];
     hash *= 0x01000193;
   }
   return hash;
 }
 
-char* VariableMapGet(VariableMap* m, char* key) {
+VariableKeyVal* VariableMapGet(VariableMap* m, char* key) {
   uint32_t h = Hash(key);
   // Utilize power of two sizing, so we can use capacity as a size mask instead
   // of having to do a modulo.
-  VariableKeyVal* i = m->variablesMap + (h & (m->capacity -  1));
+  VariableKeyVal* i = m->variablesMap + (h & (m->capacity - 1));
   while (i->key != NULL) {
     if (strcmp(i->key, key) == 0) {
-      return i->val;
+      return i;
     }
     ++i;
   }
@@ -54,6 +78,7 @@ void VariableMapResize(VariableMap* m) {
   for (int i = 0; i > m->capacity >> 1; ++i) {
     VariableMapPut(m, temp_list[i].key, temp_list[i].val);
   }
+  free(temp_list);
   return;
 }
 
@@ -61,13 +86,12 @@ void VariableMapPut(VariableMap* m, char* key, char* val) {
   if (m->size / (double) m->capacity > m->load_factor) {
     VariableMapResize(m);
   }
-
   uint32_t h = Hash(m);
   // Utilize power of two sizing, so we can use capacity as a size mask instead
   // of having to do a modulo.
-  VariableKeyVal* i = m->variablesMap + (h & (m->capacity -  1));
+  VariableKeyVal* i = m->variablesMap + (h & (m->capacity - 1));
   while (i->key != NULL) {
-    if (strcmp(i->key,key) == 0) {
+    if (strcmp(i->key, key) == 0) {
       i->val = val;
       return;
     }
@@ -75,6 +99,7 @@ void VariableMapPut(VariableMap* m, char* key, char* val) {
   }
   i->key = key;
   i->val = val;
+  i->from_current_block = true;
   m->size++;
 }
 
@@ -84,7 +109,7 @@ void FreeMap(VariableMap* m) {
 }
 
 char* AssignName(char* dst, char* name) {
-  sprintf(dst, "%s.%d", name, variableCount);
+  sprintf(dst, "%s.%d", name, variableCount++);
   return dst;
 }
 
@@ -94,11 +119,12 @@ char* AssignGotoLabel(char* dst, char* name) {
 }
 
 void ResolveDeclaration(VariableMap* m, Declaration* dec) {
-  char* v = VariableMapGet(m, dec->identifier);
-  if (v == NULL) {
+  VariableKeyVal* v = VariableMapGet(m, dec->identifier);
+  if (v == NULL || !v->from_current_block) {
     // TODO: something better here.
-    v = malloc(sizeof(char) * 50);
-    VariableMapPut(m, dec->identifier, AssignName(v, dec->identifier));
+    v = malloc(sizeof(VariableKeyVal));
+    v->val = malloc(sizeof(char) * 50);
+    VariableMapPut(m, dec->identifier, AssignName(v->val, dec->identifier));
   } else {
     fprintf(stderr, "Redefining variable: %s", dec->identifier);
     exit(2);
@@ -106,11 +132,17 @@ void ResolveDeclaration(VariableMap* m, Declaration* dec) {
   if (dec->init != NULL) {
     ResolveExp(m, dec->init);
   }
-  dec->identifier = v;
+  dec->identifier = v->val;
 }
 
 void ResolveStatement(VariableMap* m, Statement* statement) {
-  switch(statement->type) {
+  switch (statement->type) {
+    case S_BLOCK: {
+      VariableMap* copy = CopyVariableMap(m);
+      ResolveBlock(copy, statement->block);
+      FreeMap(copy);
+      return;
+    }
     case S_IF:
       ResolveExp(m, statement->if_statement->cond);
       ResolveStatement(m, statement->if_statement->statement);
@@ -133,7 +165,6 @@ void ResolveStatement(VariableMap* m, Statement* statement) {
 }
 
 void ResolveExp(VariableMap* m, Exp* exp) {
-  char* v;
   switch (exp->type) {
     case eAssignment:
       if (exp->assignment.left->type != eVar) {
@@ -143,14 +174,15 @@ void ResolveExp(VariableMap* m, Exp* exp) {
       ResolveExp(m, exp->assignment.left);
       ResolveExp(m, exp->assignment.right);
       return;
-    case eVar:
-      v = VariableMapGet(m, exp->identifier);
+    case eVar: {
+      VariableKeyVal* v = VariableMapGet(m, exp->identifier);
       if (v == NULL) {
         fprintf(stderr, "Undeclared variable! %s\n", exp->identifier);
         exit(2);
       }
-      exp->identifier = v;
+      exp->identifier = v->val;
       return;
+    }
     case eBinaryExp:
       ResolveExp(m, exp->binary_exp.left);
       ResolveExp(m, exp->binary_exp.right);
@@ -187,68 +219,91 @@ void ResolveExp(VariableMap* m, Exp* exp) {
 }
 
 void AddStatementGotoLabels(VariableMap* m, Statement* s) {
-  if (s->type == S_IF) {
-    AddStatementGotoLabels(m, s->if_statement->statement);
-    if (s->if_statement->has_else) {
-      AddStatementGotoLabels(m, s->if_statement->else_statement);
+  switch (s->type) {
+    case S_IF: {
+      AddStatementGotoLabels(m, s->if_statement->statement);
+      if (s->if_statement->has_else) {
+        AddStatementGotoLabels(m, s->if_statement->else_statement);
+      }
+      break;
     }
-  } else if (s->type == S_GOTO_LABEL) {
-    char* got = VariableMapGet(m, s->goto_label->identifier);
-    if (got != NULL) {
-      fprintf(stderr, "repeated goto label in the same function: %s\n",
-              s->goto_label->identifier);
-      exit(1);
+    case S_GOTO_LABEL: {
+      VariableKeyVal* got = VariableMapGet(m, s->goto_label->identifier);
+      if (got != NULL) {
+        fprintf(stderr, "repeated goto label in the same function: %s\n",
+                s->goto_label->identifier);
+        exit(1);
+      }
+      char* v = malloc(sizeof(char) * 50);
+      // To prevent name collisions with functions we will fiddle with the label name.
+      // This is because function and labels can have the same name.
+      VariableMapPut(m, s->goto_label->identifier, AssignGotoLabel(v, s->goto_label->identifier));
+      s->goto_label->identifier = v;
+      AddStatementGotoLabels(m, s->goto_label->statement);
+      break;
     }
-    char* v = malloc(sizeof(char) * 50);
-    // To prevent name collisions with functions we will fiddle with the label name.
-    // This is because function and labels can have the same name.
-    VariableMapPut(m, s->goto_label->identifier, AssignGotoLabel(v, s->goto_label->identifier));
-    s->goto_label->identifier = v;
-    AddStatementGotoLabels(m, s->goto_label->statement);
+    case S_BLOCK:
+      AddBlockGotoLabels(m, s->block);
+      break;
   }
 }
 
 void CheckStatementGotoLabels(VariableMap* m, Statement* s) {
-  if (s->type == S_IF) {
-    CheckStatementGotoLabels(m, s->if_statement->statement);
-    if (s->if_statement->has_else) {
-      CheckStatementGotoLabels(m, s->if_statement->else_statement);
+  switch (s->type) {
+    case S_BLOCK:
+      CheckBlockGotoLabels(m, s->block);
+      break;
+    case S_IF:
+      CheckStatementGotoLabels(m, s->if_statement->statement);
+      if (s->if_statement->has_else) {
+        CheckStatementGotoLabels(m, s->if_statement->else_statement);
+      }
+      break;
+    case S_GOTO_LABEL:
+      CheckStatementGotoLabels(m, s->goto_label->statement);
+      break;
+    case S_GOTO: {
+      VariableKeyVal* got = VariableMapGet(m, s->goto_identifier);
+      if (got == NULL) {
+        fprintf(stderr, "unknown jump label: %s\n", s->goto_identifier);
+        exit(1);
+      }
+      s->goto_identifier = got->val;
+      break;
     }
-  } else if (s->type == S_GOTO_LABEL) {
-    CheckStatementGotoLabels(m, s->goto_label->statement);
-  } if (s->type == S_GOTO) {
-    char* got = VariableMapGet(m, s->goto_identifier);
-    if (got == NULL) {
-      fprintf(stderr, "unknown jump label: %s\n", s->goto_identifier);
-      exit(1);
-    }
-    s->goto_identifier = got;
   }
 }
 
-void ValidateGotoLabels(Function* f) {
-  VariableMap* map = MakeVariableMap();
-  // check for duplicate labels
-  for (int i = 0; i < f->item_list.length; ++i) {
-    BlockItem* item = f->item_list.items[i];
+void AddBlockGotoLabels(VariableMap* map, Block* block) {
+  for (int i = 0; i < block->list->length; ++i) {
+    BlockItem* item = block->list->items[i];
     if (item->type == B_STATEMENT) {
       AddStatementGotoLabels(map, item->statement);
     }
   }
-  // validate that goto jumps are to existing labels.
-  for (int i = 0; i < f->item_list.length; ++i) {
-    BlockItem* item = f->item_list.items[i];
+}
+
+void CheckBlockGotoLabels(VariableMap* map, Block* block) {
+  for (int i = 0; i < block->list->length; ++i) {
+    BlockItem* item = block->list->items[i];
     if (item->type == B_STATEMENT) {
       CheckStatementGotoLabels(map, item->statement);
     }
   }
 }
 
-void ResolveVariables(Function* f) {
+void ValidateGotoLabels(Function* f) {
   VariableMap* map = MakeVariableMap();
-  for (int i = 0; i < f->item_list.length; ++i) {
-    BlockItem* item = f->item_list.items[i];
-    switch(item->type) {
+  // check for duplicate labels
+  AddBlockGotoLabels(map, f->body);
+  // validate that goto jumps are to existing labels.
+  CheckBlockGotoLabels(map, f->body);
+}
+
+void ResolveBlock(VariableMap* map, Block* block) {
+  for (int i = 0; i < block->list->length; ++i) {
+    BlockItem* item = block->list->items[i];
+    switch (item->type) {
       case B_DECLARATION:
         ResolveDeclaration(map, item->declaration);
         break;
@@ -257,6 +312,12 @@ void ResolveVariables(Function* f) {
         break;
     }
   }
+}
+
+void ResolveVariables(Function* f) {
+  VariableMap* map = MakeVariableMap();
+  ResolveBlock(map, f->body);
+  FreeMap(map);
 }
 
 void AnalyzeSemantics(Program* program) {

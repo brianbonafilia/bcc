@@ -10,6 +10,7 @@ int tmp_count = 0;
 int label_count = 0;
 
 TackyVal EmitTacky(Arena* arena, Exp* exp, TackyFunction* tf);
+bool EmitTackyBlock(Arena* arena, Block* block, TackyFunction* tf);
 
 // Assumes no allocations concurrently.
 void AppendInstruction(Arena* arena, TackyFunction* tf, TackyInstruction instr) {
@@ -403,6 +404,8 @@ TackyVal EmitTacky(Arena* arena, Exp* exp, TackyFunction* tf) {
 // EmitTackyStatement emits tacky code, and returns true if the statement is a return statement.
 bool EmitTackyStatement(Arena* a, Statement* s, TackyFunction* tf) {
   switch (s->type) {
+    case S_BLOCK:
+      return EmitTackyBlock(a, s->block, tf);
     case S_NULL:
       return false;
     case S_IF: {
@@ -477,44 +480,48 @@ bool EmitTackyStatement(Arena* a, Statement* s, TackyFunction* tf) {
   }
 }
 
-  TackyFunction* EmitTackyFunction(Arena* arena, Function* func) {
-    TackyFunction* tf = arena_alloc(arena, sizeof(TackyFunction));
-    tf->identifier = func->name;
-    tf->instr_length = 0;
-    bool returnLast = false;
-    for (int i = 0; i < func->item_list.length; ++i) {
-      returnLast = false;
-      BlockItem* item = func->item_list.items[i];
-      switch (item->type) {
-        case B_DECLARATION:
-          if (item->declaration->init == NULL)
-            continue;
-          TackyVal v = EmitTacky(arena, item->declaration->init, tf);
-          TackyVal dst = {.type = TACKY_VAR};
-          sprintf(dst.identifier, "%s", item->declaration->identifier);
-          TackyInstruction t_instr = {
-              .type = TACKY_COPY,
-              .copy.src = v,
-              .copy.dst = dst,
-          };
-          AppendInstruction(arena, tf, t_instr);
-          break;
-        case B_STATEMENT:
-          returnLast = EmitTackyStatement(arena, item->statement, tf);
-          break;
-      }
+bool EmitTackyBlock(Arena* arena, Block* block, TackyFunction* tf) {
+  bool return_last = false;
+  for (int i = 0; i < block->list->length; ++i) {
+    return_last = false;
+    BlockItem* item = block->list->items[i];
+    switch (item->type) {
+      case B_DECLARATION:
+        if (item->declaration->init == NULL)
+          continue;
+        TackyVal v = EmitTacky(arena, item->declaration->init, tf);
+        TackyVal dst = {.type = TACKY_VAR};
+        sprintf(dst.identifier, "%s", item->declaration->identifier);
+        TackyInstruction t_instr = {
+            .type = TACKY_COPY,
+            .copy.src = v,
+            .copy.dst = dst,
+        };
+        AppendInstruction(arena, tf, t_instr);
+        break;
+      case B_STATEMENT:
+        return_last = EmitTackyStatement(arena, item->statement, tf);
+        break;
     }
-    // If a function doesn't end with a return statement, we will help out by
-    // simply returning 0.
-    if (!returnLast) {
-      TackyInstruction ret = {
-          .type = TACKY_RETURN,
-          .return_val = (TackyVal) {.const_val = 0},
-      };
-      AppendInstruction(arena, tf, ret);
-    }
-    return tf;
   }
+  return return_last;
+}
+
+TackyFunction* EmitTackyFunction(Arena* arena, Function* func) {
+  TackyFunction* tf = arena_alloc(arena, sizeof(TackyFunction));
+  tf->identifier = func->name;
+  tf->instr_length = 0;
+  // If a function doesn't end with a return statement, we will help out by
+  // simply returning 0.
+  if (!EmitTackyBlock(arena, func->body, tf)) {
+    TackyInstruction ret = {
+        .type = TACKY_RETURN,
+        .return_val = (TackyVal) {.const_val = 0},
+    };
+    AppendInstruction(arena, tf, ret);
+  }
+  return tf;
+}
 
   TackyProgram* EmitTackyProgram(Arena* arena, Program* program) {
     TackyProgram* pgrm = arena_alloc(arena, sizeof(TackyProgram));

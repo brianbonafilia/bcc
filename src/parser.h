@@ -5,9 +5,11 @@
  * <program> ::= <function>
  * <function> ::= "int" <identifier> "(" "void" ")" "{" { <block_item> } "}"
  * <block_item> ::= <statement> | <declaration>
+ * <block> ::= "{" { <block_item> } "}"
  * <declaration> ::= "int" <identifier> [ "=" <exp> ] ";"
  * <statement> ::= "return" <exp> ";"
  *      | <exp> ";"
+ *      | <block>
  *      | "if" "(" <exp> ")" <statement> [ "else" <statement> ]
  *      | ";"
  * <exp> ::= <factor> | <exp> <binop> <exp> | <exp> "?" <exp> ":" <exp>
@@ -22,10 +24,12 @@
  *
  * With the Abstract Syntax Tree Defined as
  * program = Program(function_definition()
- * function_definition = Function(identifier name, block_item* body)
+ * function_definition = Function(identifier name, block body)
  * block_item = S(statement) | D(declaration)
+ * block = Block(block_item*)
  * statement = Return(exp)
  *    | Expression(exp)
+ *    | Compound(block)
  *    | If(exp condition, statement then, statement? else)
  *    | null
  * exp = Constant(int)
@@ -48,6 +52,7 @@
 #include "arena.h"
 #include "lexer.h"
 
+typedef struct Block Block;
 typedef struct Exp Exp;
 typedef struct ConditionalExp ConditionalExp;
 typedef struct Statement Statement;
@@ -118,7 +123,8 @@ typedef enum {
   S_IF,
   S_NULL,
   S_GOTO,
-  S_GOTO_LABEL
+  S_GOTO_LABEL,
+  S_BLOCK
 } StatementType;
 
 typedef struct {
@@ -176,14 +182,6 @@ struct Exp {
   };
 };
 
-struct BlockItem {
-  BlockItemType type;
-  union {
-    Statement* statement;
-    Declaration* declaration;
-  };
-};
-
 struct IfStatement {
   Exp* cond;
   Statement* statement;
@@ -199,6 +197,7 @@ struct GotoLabel {
 struct Statement {
   StatementType type;
   union {
+    Block* block;
     Exp* exp;
     IfStatement* if_statement;
     char* goto_identifier;
@@ -218,8 +217,20 @@ typedef struct {
 
 typedef struct {
   char* name;
-  BlockItemList item_list;
+  Block* body;
 } Function;
+
+struct BlockItem {
+  BlockItemType type;
+  union {
+    Statement* statement;
+    Declaration* declaration;
+  };
+};
+
+struct Block {
+  BlockItemList* list;
+};
 
 typedef struct {
   Function* function;

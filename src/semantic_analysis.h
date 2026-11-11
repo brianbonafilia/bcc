@@ -10,6 +10,7 @@
 typedef struct {
   char* key;
   char* val;
+  bool from_current_block;
 } VariableKeyVal;
 
 typedef struct {
@@ -21,9 +22,10 @@ typedef struct {
 } VariableMap;
 
 VariableMap* MakeVariableMap();
+VariableMap* CopyVariableMap(VariableMap* m);
 
 // Gets a variable from the hash map, if no variable found, returns NULL.
-char* VariableMapGet(VariableMap* m, char* key);
+VariableKeyVal* VariableMapGet(VariableMap* m, char* key);
 void VariableMapPut(VariableMap* m, char* key, char* val);
 void FreeMap(VariableMap* m);
 

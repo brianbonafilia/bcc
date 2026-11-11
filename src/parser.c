@@ -5,8 +5,10 @@
 #include "parser.h"
 #include "lexer.h"
 
+Block* ParseBlock(Arena* arena, TokenList* list);
 Exp* ParseFactor(Arena* arena, TokenList* list);
 Exp* ParseExp(Arena* arena, TokenList* list, int min_precedence);
+BlockItem* ParseBlockItem(Arena* arena, TokenList* list);
 
 bool IsUnaryAssignment(UnaryOp op) {
   switch (op) {
@@ -410,6 +412,10 @@ Statement* ParseStatement(Arena* arena, TokenList* list) {
         list->tokens--;
       }
       return s;
+    case tOpenBrace:
+      s->type = S_BLOCK;
+      s->block = ParseBlock(arena, list);
+      return s;
     default:
     handle_default:
       s->type = S_EXP;
@@ -450,6 +456,20 @@ BlockItem* ParseBlockItem(Arena* arena, TokenList* list) {
   return item;
 }
 
+Block* ParseBlock(Arena* arena, TokenList* list) {
+  Block* block = arena_alloc(arena, sizeof(Block));
+  block->list = arena_alloc(arena, sizeof(BlockItemList));
+  block->list->items = arena_alloc(arena, sizeof(BlockItem) * 10);
+  // TODO: update to use a more proper allocation strategy...
+  // arenas seeming a not great strategy... perhaps I can make it work though. could
+  // even be lazy and just malloc and skip free.
+  while (list->tokens[0].type != tCloseBrace) {
+    block->list->items[block->list->length++] = ParseBlockItem(arena, list);
+  }
+  ExpectTokenType(DequeueToken(list), tCloseBrace);
+  return block;
+}
+
 // Expect <function> ::= "int" <identifier> "(" "void" ")" "{" <statement> "}"
 Function* ParseFunction(Arena* arena, TokenList* list) {
   Function* f = arena_alloc(arena, sizeof(Function));
@@ -463,14 +483,7 @@ Function* ParseFunction(Arena* arena, TokenList* list) {
   ExpectTokenType(DequeueToken(list), tVoid);
   ExpectTokenType(DequeueToken(list), tCloseParen);
   ExpectTokenType(DequeueToken(list), tOpenBrace);
-  f->item_list.items = arena_alloc(arena, sizeof(BlockItem) * 100);
-  // TODO: update to use a more proper allocation strategy...
-  // arenas seeming a not great strategy... perhaps I can make it work though. could
-  // even be lazy and just malloc and skip free.
-  while (list->tokens[0].type != tCloseBrace) {
-    f->item_list.items[f->item_list.length++] = ParseBlockItem(arena, list);
-  }
-  ExpectTokenType(DequeueToken(list), tCloseBrace);
+  f->body = ParseBlock(arena, list);
   return f;
 }
 

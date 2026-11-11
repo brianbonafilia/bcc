@@ -12,7 +12,7 @@ int main() {
   bool testPassed = true;
 
   VariableMap* map = MakeVariableMap();
-  char* got = VariableMapGet(map, "toot");
+  VariableKeyVal* got = VariableMapGet(map, "toot");
   if (got != NULL) {
     FreeMap(map);
     return RESULT(false)
@@ -23,7 +23,7 @@ int main() {
     testPassed = false;
     fprintf(stderr, "Did not find expected value \"test\" from map\n");
   }
-  if (strcmp(got, "val") != 0) {
+  if (strcmp(got->val, "val") != 0) {
     testPassed = false;
     fprintf(stderr, "Did not find expected value \"test\" from map\n");
   }

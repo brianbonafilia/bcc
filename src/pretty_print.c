@@ -199,13 +199,13 @@ void PrintDeclaration(Declaration* declaration, int padding) {
 void PrintFunction(Function* function, int padding) {
   printf("%*sname = \"%s\"\n", padding, "", function->name);
   printf("%*sbody = {\n", padding, "");
-  for (int i = 0; i < function->item_list.length; ++i) {
-    switch (function->item_list.items[i]->type) {
+  for (int i = 0; i < function->body->list->length; ++i) {
+    switch (function->body->list->items[i]->type) {
       case B_STATEMENT:
-        PrintStatement(function->item_list.items[i]->statement, padding + 2);
+        PrintStatement(function->body->list->items[i]->statement, padding + 2);
         break;
       case B_DECLARATION:
-        PrintDeclaration(function->item_list.items[i]->declaration, padding+2);
+        PrintDeclaration(function->body->list->items[i]->declaration, padding+2);
     }
   }
   printf("%*s}\n", padding, "");
