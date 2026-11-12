@@ -7,10 +7,18 @@
  * <block_item> ::= <statement> | <declaration>
  * <block> ::= "{" { <block_item> } "}"
  * <declaration> ::= "int" <identifier> [ "=" <exp> ] ";"
+ * <for_init> ::= <declaration> | [ <exp> ] ";"
  * <statement> ::= "return" <exp> ";"
  *      | <exp> ";"
  *      | <block>
  *      | "if" "(" <exp> ")" <statement> [ "else" <statement> ]
+ *      | "goto" <identifier> ":"
+ *      | <identifier> ":" <statement>
+ *      | "break" ";"
+ *      | "continue" ";"
+ *      | "do" <statement> "while" "(" <exp> ")" ";"
+ *      | "while" "(" <exp> ")" <statement>
+ *      | "for" "(" <for_init> [ <exp> ] ";" [ <exp> ] ")" <statement>
  *      | ";"
  * <exp> ::= <factor> | <exp> <binop> <exp> | <exp> "?" <exp> ":" <exp>
  * <factor> ::= <int> | <identifier> | <unop> <factor> | "(" <exp> ")"
@@ -27,10 +35,18 @@
  * function_definition = Function(identifier name, block body)
  * block_item = S(statement) | D(declaration)
  * block = Block(block_item*)
+ * for_init = InitDecl(declaration) | InitExp(exp?)
  * statement = Return(exp)
  *    | Expression(exp)
- *    | Compound(block)
  *    | If(exp condition, statement then, statement? else)
+ *    | Goto(identifier label)
+ *    | GotoLabel(identifier label, statement next)
+ *    | Compound(block)
+ *    | Break(identifier label)
+ *    | Continue(identifier label)
+ *    | While(exp condition, statement body, identifier label)
+ *    | DoWhile(statement body, exp condition, identifier label)
+ *    | For(for_init init, exp? condition, exp? post, statement body, identifier label)
  *    | null
  * exp = Constant(int)
  *    | Var(identifier)
@@ -57,6 +73,10 @@ typedef struct Exp Exp;
 typedef struct ConditionalExp ConditionalExp;
 typedef struct Statement Statement;
 typedef struct IfStatement IfStatement;
+typedef struct While While;
+typedef struct DoWhile DoWhile;
+typedef struct For For;
+typedef struct ForInit ForInit;
 typedef struct GotoLabel GotoLabel;
 typedef struct Declaration Declaration;
 typedef struct Assignment Assignment;
@@ -124,7 +144,12 @@ typedef enum {
   S_NULL,
   S_GOTO,
   S_GOTO_LABEL,
-  S_BLOCK
+  S_BLOCK,
+  S_BREAK,
+  S_CONTINUE,
+  S_FOR,
+  S_WHILE,
+  S_DO_WHILE
 } StatementType;
 
 typedef struct {
@@ -194,13 +219,38 @@ struct GotoLabel {
   Statement* statement;
 };
 
+struct While {
+  Exp* cond;
+  Statement* body;
+  char* identifier;
+};
+
+typedef enum {
+  FI_DECLARATION,
+  FI_EXP,
+} ForInitType;
+
+struct ForInit {
+  ForInitType type;
+  Declaration* dec;
+  Exp* exp;
+};
+
+struct For {
+  ForInit* for_init;
+  Exp* cond;
+  Exp* post;
+};
+
 struct Statement {
   StatementType type;
   union {
     Block* block;
     Exp* exp;
     IfStatement* if_statement;
-    char* goto_identifier;
+    While* s_while;
+    For* s_for;
+    char* label_identifier;
     GotoLabel* goto_label;
   };
 };

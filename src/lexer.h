@@ -54,7 +54,13 @@ static const char *TypeStr[] = {
     "tQuestion",
     "tColon",
     "tRShiftEquals",
+    "tLabel",
     "tGoto",
+    "tBreak",
+    "tContinue",
+    "tDo",
+    "tWhile",
+    "tFor",
     "tEof"
 };
 
@@ -109,6 +115,11 @@ typedef enum {
   tColon,
   tLabel,
   tGoto,
+  tBreak,
+  tContinue,
+  tDo,
+  tWhile,
+  tFor,
   tEof
 } TokenType;
 

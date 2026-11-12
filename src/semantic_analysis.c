@@ -263,12 +263,12 @@ void CheckStatementGotoLabels(VariableMap* m, Statement* s) {
       CheckStatementGotoLabels(m, s->goto_label->statement);
       break;
     case S_GOTO: {
-      VariableKeyVal* got = VariableMapGet(m, s->goto_identifier);
+      VariableKeyVal* got = VariableMapGet(m, s->label_identifier);
       if (got == NULL) {
-        fprintf(stderr, "unknown jump label: %s\n", s->goto_identifier);
+        fprintf(stderr, "unknown jump label: %s\n", s->label_identifier);
         exit(1);
       }
-      s->goto_identifier = got->val;
+      s->label_identifier = got->val;
       break;
     }
   }

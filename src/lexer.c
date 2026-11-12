@@ -64,6 +64,26 @@ Token GetAlphaToken(FILE *fp) {
       result.type = tGoto;
       return result;
     }
+    if (strcmp(result.value, "break") == 0) {
+      result.type = tBreak;
+      return result;
+    }
+    if (strcmp(result.value, "continue") == 0) {
+      result.type = tContinue;
+      return result;
+    }
+    if (strcmp(result.value, "do") == 0) {
+      result.type = tDo;
+      return result;
+    }
+    if (strcmp(result.value, "while") == 0) {
+      result.type = tWhile;
+      return result;
+    }
+    if (strcmp(result.value, "for") == 0) {
+      result.type = tFor;
+      return result;
+    }
     result.type = tIdentifier;
     return result;
   }

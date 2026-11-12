@@ -450,7 +450,7 @@ bool EmitTackyStatement(Arena* a, Statement* s, TackyFunction* tf) {
       TackyInstruction t_jmp = {
           .type = TACKY_JMP,
       };
-      snprintf(t_jmp.label, 20, "%s", s->goto_identifier);
+      snprintf(t_jmp.label, 20, "%s", s->label_identifier);
       AppendInstruction(a, tf, t_jmp);
       return false;
     }

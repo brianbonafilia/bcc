@@ -9,6 +9,7 @@ Block* ParseBlock(Arena* arena, TokenList* list);
 Exp* ParseFactor(Arena* arena, TokenList* list);
 Exp* ParseExp(Arena* arena, TokenList* list, int min_precedence);
 BlockItem* ParseBlockItem(Arena* arena, TokenList* list);
+Declaration* ParseDeclaration(Arena* arena, TokenList* list);
 
 bool IsUnaryAssignment(UnaryOp op) {
   switch (op) {
@@ -364,10 +365,66 @@ Exp* ParseExp(Arena* arena, TokenList* list, int min_precedence) {
   return left;
 }
 
+Exp* ParseMaybeExp(Arena* arena, TokenList* list, TokenType end) {
+  if (list->tokens[0].type == end) {
+    DequeueToken(list);
+    return NULL;
+  }
+  Exp* exp = ParseExp(arena, list, 0);
+  ExpectTokenType(DequeueToken(list), end);
+  return exp;
+}
+
+ForInit* ParseForInit(Arena* arena, TokenList* list) {
+  ForInit* init = arena_alloc(arena, sizeof(ForInit));
+  if (list->tokens[0].type == tInt) {
+    init->type = FI_DECLARATION;
+    init->dec = ParseDeclaration(arena, list);
+    return init;
+  }
+  init->type = FI_EXP;
+  init->exp = ParseMaybeExp(arena, list, tSemicolin);
+  return init;
+}
+
 Statement* ParseStatement(Arena* arena, TokenList* list) {
   Statement* s = arena_alloc(arena, sizeof(Statement));
   Token token = DequeueToken(list);
   switch (token.type) {
+    case tBreak:
+      s->type = S_BREAK;
+      ExpectTokenType(DequeueToken(list), tSemicolin);
+      return s;
+    case tContinue:
+      s->type = S_CONTINUE;
+      ExpectTokenType(DequeueToken(list), tSemicolin);
+      return s;
+    case tWhile:
+      s->type = S_WHILE;
+      ExpectTokenType(DequeueToken(list), tOpenParen);
+      s->s_while = arena_alloc(arena, sizeof(While));
+      s->s_while->cond = ParseExp(arena, list, 0);
+      ExpectTokenType(DequeueToken(list), tCloseParen);
+      s->s_while->body = ParseStatement(arena, list);
+      return s;
+    case tDo:
+      s->type = S_DO_WHILE;
+      ParseStatement(arena, list);
+      ExpectTokenType(DequeueToken(list), tWhile);
+      ExpectTokenType(DequeueToken(list), tOpenParen);
+      s->s_while = arena_alloc(arena, sizeof(While));
+      s->s_while->cond = ParseExp(arena, list, 0);
+      ExpectTokenType(DequeueToken(list), tCloseParen);
+      ExpectTokenType(DequeueToken(list), tSemicolin);
+      return s;
+    case tFor:
+      s->type = S_FOR;
+      ExpectTokenType(DequeueToken(list), tOpenParen);
+      s->s_for = arena_alloc(arena, sizeof(For));
+      s->s_for->for_init = ParseForInit(arena, list);
+      s->s_for->cond = ParseMaybeExp(arena, list, tSemicolin);
+      s->s_for->post = ParseMaybeExp(arena, list, tCloseParen);
+      return s;
     case tReturn:
       s->type = S_RETURN;
       s->exp = ParseExp(arena, list, /*min_precedence=*/0);
@@ -380,8 +437,8 @@ Statement* ParseStatement(Arena* arena, TokenList* list) {
       s->type = S_GOTO;
       Token t = DequeueToken(list);
       ExpectTokenType(t, tIdentifier);
-      s->goto_identifier = arena_alloc(arena, strlen(t.value) + 1);
-      strcpy(s->goto_identifier, t.value);
+      s->label_identifier = arena_alloc(arena, strlen(t.value) + 1);
+      strcpy(s->label_identifier, t.value);
       ExpectTokenType(DequeueToken(list), tSemicolin);
       return s;
     }
@@ -457,7 +514,7 @@ BlockItem* ParseBlockItem(Arena* arena, TokenList* list) {
 }
 
 Block* ParseBlock(Arena* arena, TokenList* list) {
-  Block* block = arena_alloc(arena, sizeof(Block));
+   Block* block = arena_alloc(arena, sizeof(Block));
   block->list = arena_alloc(arena, sizeof(BlockItemList));
   block->list->items = arena_alloc(arena, sizeof(BlockItem) * 10);
   // TODO: update to use a more proper allocation strategy...
