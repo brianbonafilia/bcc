@@ -409,10 +409,10 @@ Statement* ParseStatement(Arena* arena, TokenList* list) {
       return s;
     case tDo:
       s->type = S_DO_WHILE;
-      ParseStatement(arena, list);
+      s->s_while = arena_alloc(arena, sizeof(While));
+      s->s_while->body = ParseStatement(arena, list);
       ExpectTokenType(DequeueToken(list), tWhile);
       ExpectTokenType(DequeueToken(list), tOpenParen);
-      s->s_while = arena_alloc(arena, sizeof(While));
       s->s_while->cond = ParseExp(arena, list, 0);
       ExpectTokenType(DequeueToken(list), tCloseParen);
       ExpectTokenType(DequeueToken(list), tSemicolin);
@@ -424,6 +424,7 @@ Statement* ParseStatement(Arena* arena, TokenList* list) {
       s->s_for->for_init = ParseForInit(arena, list);
       s->s_for->cond = ParseMaybeExp(arena, list, tSemicolin);
       s->s_for->post = ParseMaybeExp(arena, list, tCloseParen);
+      s->s_for->body = ParseStatement(arena, list);
       return s;
     case tReturn:
       s->type = S_RETURN;

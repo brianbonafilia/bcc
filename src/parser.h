@@ -232,14 +232,18 @@ typedef enum {
 
 struct ForInit {
   ForInitType type;
-  Declaration* dec;
-  Exp* exp;
+  union {
+    Declaration* dec;
+    Exp* exp;
+  };
 };
 
 struct For {
   ForInit* for_init;
   Exp* cond;
   Exp* post;
+  Statement* body;
+  char* identifier;
 };
 
 struct Statement {

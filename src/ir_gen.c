@@ -11,6 +11,9 @@ int label_count = 0;
 
 TackyVal EmitTacky(Arena* arena, Exp* exp, TackyFunction* tf);
 bool EmitTackyBlock(Arena* arena, Block* block, TackyFunction* tf);
+void EmitJump(Arena* a, char* label, TackyFunction* tf);
+void EmitTackyDeclaration(Arena* a, Declaration* d, TackyFunction* tf);
+bool EmitTackyStatement(Arena* a, Statement* s, TackyFunction* tf);
 
 // Assumes no allocations concurrently.
 void AppendInstruction(Arena* arena, TackyFunction* tf, TackyInstruction instr) {
@@ -401,9 +404,127 @@ TackyVal EmitTacky(Arena* arena, Exp* exp, TackyFunction* tf) {
   }
 }
 
+void EmitStartLoopLabel(Arena* a, char* label, TackyFunction* tf) {
+  TackyInstruction t_label = {
+      .type = TACKY_LABEL,
+  };
+  snprintf(t_label.label, 20, "%s", label);
+  AppendInstruction(a, tf, t_label);
+}
+
+void EmitContinueLoopLabel(Arena* a, char* label, TackyFunction* tf) {
+  TackyInstruction t_label = {
+      .type = TACKY_LABEL,
+  };
+  snprintf(t_label.label, 20, "c_%s", label);
+  AppendInstruction(a, tf, t_label);
+}
+
+void EmitBreakLoopLabel(Arena* a, char* label, TackyFunction* tf) {
+  TackyInstruction t_label = {
+      .type = TACKY_LABEL,
+  };
+  snprintf(t_label.label, 20, "b_%s", label);
+  AppendInstruction(a, tf, t_label);
+}
+
+void EmitJumpLoopCond(Arena* a, TackyInstrType t, TackyVal c, char* label, TackyFunction* tf) {
+  TackyInstruction t_instr = {
+      .type = t,
+      .jump_cond = (JumpCond) {
+          .val = c,
+      }
+  };
+  snprintf(t_instr.jump_cond.target, 20, "%s", label);
+  AppendInstruction(a, tf, t_instr);
+}
+
+void EmitJump(Arena* a, char* label, TackyFunction* tf) {
+  TackyInstruction t_instr = {
+      .type = TACKY_JMP,
+  };
+  snprintf(t_instr.label, 20, "%s", label);
+  AppendInstruction(a, tf, t_instr);
+}
+
+TackyVal EmitMaybeExp(Arena* a, Exp* exp, TackyFunction* tf) {
+  if (exp != NULL) {
+    return EmitTacky(a, exp, tf);
+  }
+  return (TackyVal) {};
+}
+
+void EmitForInit(Arena* a, ForInit* for_init, TackyFunction* tf) {
+  if (for_init->type == FI_EXP) {
+    EmitMaybeExp(a, for_init->exp, tf);
+    return;
+  }
+  EmitTackyDeclaration(a, for_init->dec, tf);
+}
+
+void EmitTackyForLoop(Arena* a, For* f, TackyFunction* tf) {
+  EmitForInit(a, f->for_init, tf);
+  EmitStartLoopLabel(a, f->identifier, tf);
+  TackyVal v = EmitMaybeExp(a, f->cond, tf);
+  char break_label[20];
+  snprintf(break_label, 20, "b_%s", f->identifier);
+  // no jumping out of loop if no cond is set.
+  if (v.type != TACKY_NULL) {
+    EmitJumpLoopCond(a, TACKY_JMP_Z, v, break_label, tf);
+  }
+  EmitTackyStatement(a, f->body, tf);
+  EmitContinueLoopLabel(a, f->identifier, tf);
+  EmitMaybeExp(a, f->post, tf);
+  EmitJump(a, f->identifier, tf);
+  EmitBreakLoopLabel(a, f->identifier, tf);
+}
+
+void EmitTackyWhile(Arena* a, While* w, TackyFunction* tf) {
+  EmitContinueLoopLabel(a, w->identifier, tf);
+  TackyVal v = EmitTacky(a, w->cond, tf);
+  char break_label[20];
+  snprintf(break_label, 20, "b_%s", w->identifier);
+  EmitJumpLoopCond(a, TACKY_JMP_Z, v, break_label, tf);
+  EmitTackyStatement(a, w->body, tf);
+  char cont_label[20];
+  snprintf(cont_label, 20, "c_%s", w->identifier);
+  EmitJump(a, cont_label, tf);
+  EmitBreakLoopLabel(a, w->identifier, tf);
+}
+
+void EmitTackyDoWhile(Arena* a, While* w, TackyFunction* tf) {
+  EmitStartLoopLabel(a, w->identifier, tf);
+  EmitTackyStatement(a, w->body, tf);
+  EmitContinueLoopLabel(a, w->identifier, tf);
+  TackyVal v = EmitTacky(a, w->cond, tf);
+  EmitJumpLoopCond(a, TACKY_JMP_NZ, v, w->identifier, tf);
+  EmitBreakLoopLabel(a, w->identifier, tf);
+}
+
 // EmitTackyStatement emits tacky code, and returns true if the statement is a return statement.
 bool EmitTackyStatement(Arena* a, Statement* s, TackyFunction* tf) {
   switch (s->type) {
+    case S_DO_WHILE:
+      EmitTackyDoWhile(a, s->s_while, tf);
+      return false;
+    case S_WHILE:
+      EmitTackyWhile(a, s->s_while, tf);
+      return false;
+    case S_FOR:
+      EmitTackyForLoop(a, s->s_for, tf);
+      return false;
+    case S_CONTINUE: {
+      char label[20];
+      snprintf(label, 20, "c_%s", s->label_identifier);
+      EmitJump(a, label, tf);
+      return false;
+    }
+    case S_BREAK: {
+      char label[20];
+      snprintf(label, 20, "b_%s", s->label_identifier);
+      EmitJump(a, label, tf);
+      return false;
+    }
     case S_BLOCK:
       return EmitTackyBlock(a, s->block, tf);
     case S_NULL:
@@ -480,6 +601,21 @@ bool EmitTackyStatement(Arena* a, Statement* s, TackyFunction* tf) {
   }
 }
 
+void EmitTackyDeclaration(Arena* a, Declaration* d, TackyFunction* tf) {
+  if (d->init == NULL) {
+    return;
+  }
+  TackyVal v = EmitTacky(a, d->init, tf);
+  TackyVal dst = {.type = TACKY_VAR};
+  sprintf(dst.identifier, "%s", d->identifier);
+  TackyInstruction t_instr = {
+      .type = TACKY_COPY,
+      .copy.src = v,
+      .copy.dst = dst,
+  };
+  AppendInstruction(a, tf, t_instr);
+}
+
 bool EmitTackyBlock(Arena* arena, Block* block, TackyFunction* tf) {
   bool return_last = false;
   for (int i = 0; i < block->list->length; ++i) {
@@ -487,17 +623,7 @@ bool EmitTackyBlock(Arena* arena, Block* block, TackyFunction* tf) {
     BlockItem* item = block->list->items[i];
     switch (item->type) {
       case B_DECLARATION:
-        if (item->declaration->init == NULL)
-          continue;
-        TackyVal v = EmitTacky(arena, item->declaration->init, tf);
-        TackyVal dst = {.type = TACKY_VAR};
-        sprintf(dst.identifier, "%s", item->declaration->identifier);
-        TackyInstruction t_instr = {
-            .type = TACKY_COPY,
-            .copy.src = v,
-            .copy.dst = dst,
-        };
-        AppendInstruction(arena, tf, t_instr);
+        EmitTackyDeclaration(arena, item->declaration, tf);
         break;
       case B_STATEMENT:
         return_last = EmitTackyStatement(arena, item->statement, tf);
@@ -516,16 +642,19 @@ TackyFunction* EmitTackyFunction(Arena* arena, Function* func) {
   if (!EmitTackyBlock(arena, func->body, tf)) {
     TackyInstruction ret = {
         .type = TACKY_RETURN,
-        .return_val = (TackyVal) {.const_val = 0},
+        .return_val = (TackyVal) {
+            .type = TACKY_CONST,
+            .const_val = 0
+        },
     };
     AppendInstruction(arena, tf, ret);
   }
   return tf;
 }
 
-  TackyProgram* EmitTackyProgram(Arena* arena, Program* program) {
-    TackyProgram* pgrm = arena_alloc(arena, sizeof(TackyProgram));
-    pgrm->function_def = EmitTackyFunction(arena, program->function);
-    return pgrm;
-  }
+TackyProgram* EmitTackyProgram(Arena* arena, Program* program) {
+  TackyProgram* pgrm = arena_alloc(arena, sizeof(TackyProgram));
+  pgrm->function_def = EmitTackyFunction(arena, program->function);
+  return pgrm;
+}
 

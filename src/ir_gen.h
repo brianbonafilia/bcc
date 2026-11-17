@@ -25,6 +25,7 @@
 #include "parser.h"
 
 typedef enum {
+  TACKY_NULL,
   TACKY_CONST,
   TACKY_VAR
 } TackyValType;

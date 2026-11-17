@@ -84,6 +84,7 @@ void InternalCompile(char* file_name, Mode mode) {
   }
   // Phases 3: Semantic Analysis
   AnalyzeSemantics(program);
+  AddLoopLabeling(program);
   if (mode == VALIDATE) {
     exit(0);
   }

@@ -14,6 +14,7 @@ int labelCount = 0;
 void ResolveBlock(VariableMap* map, Block* block);
 void AddBlockGotoLabels(VariableMap* map, Block* block);
 void CheckBlockGotoLabels(VariableMap* map, Block* block);
+void LabelBlock(Block* block, char* current_label);
 
 // Lazy copying of variable map, probably ideal when smaller number
 // of variables. A direct memcpy seems like it could be ideal
@@ -135,8 +136,37 @@ void ResolveDeclaration(VariableMap* m, Declaration* dec) {
   dec->identifier = v->val;
 }
 
+void ResolveMaybeExp(VariableMap* m, Exp* e) {
+  if (e == NULL) {
+    return;
+  }
+  ResolveExp(m, e);
+}
+
+void ResolveForInit(VariableMap* m, ForInit* init) {
+  if (init->type == FI_DECLARATION) {
+    return ResolveDeclaration(m, init->dec);
+  }
+  return ResolveMaybeExp(m, init->exp);
+}
+
 void ResolveStatement(VariableMap* m, Statement* statement) {
   switch (statement->type) {
+    case S_WHILE:
+    case S_DO_WHILE: {
+      ResolveExp(m, statement->s_while->cond);
+      ResolveStatement(m, statement->s_while->body);
+      return;
+    }
+    case S_FOR: {
+      VariableMap* copy = CopyVariableMap(m);
+      ResolveForInit(copy, statement->s_for->for_init);
+      ResolveMaybeExp(copy, statement->s_for->cond);
+      ResolveMaybeExp(copy, statement->s_for->post);
+      ResolveStatement(copy, statement->s_for->body);
+      FreeMap(copy);
+      return;
+    }
     case S_BLOCK: {
       VariableMap* copy = CopyVariableMap(m);
       ResolveBlock(copy, statement->block);
@@ -159,6 +189,8 @@ void ResolveStatement(VariableMap* m, Statement* statement) {
     case S_EXP:
       ResolveExp(m, statement->exp);
       return;
+    case S_CONTINUE:
+    case S_BREAK:
     case S_NULL:
       return;
   }
@@ -323,4 +355,62 @@ void ResolveVariables(Function* f) {
 void AnalyzeSemantics(Program* program) {
   ResolveVariables(program->function);
   ValidateGotoLabels(program->function);
+}
+
+int loop_count = 0;
+
+char* NewLoopLabel() {
+  char* label = (char*) malloc(sizeof(char) * 10);
+  snprintf(label, 10, "loop%d", loop_count++);
+  return label;
+}
+
+void LabelStatement(Statement* s, char* current_label) {
+  switch(s->type) {
+    case S_BREAK:
+    case S_CONTINUE:
+      if (current_label  == NULL) {
+        fprintf(stderr, "break or continue statement outside of loop\n");
+        exit(1);
+      }
+      s->label_identifier = current_label;
+      return;
+    case S_DO_WHILE:
+    case S_WHILE: {
+      char* new_label = NewLoopLabel();
+      LabelStatement(s->s_while->body, new_label);
+      s->s_while->identifier = new_label;
+      return;
+    }
+    case S_FOR: {
+      char* new_label = NewLoopLabel();
+      LabelStatement(s->s_for->body, new_label);
+      s->s_for->identifier = new_label;
+      return;
+    }
+    case S_IF:
+      LabelStatement(s->if_statement->statement, current_label);
+      if (s->if_statement->has_else) {
+        LabelStatement(s->if_statement->else_statement, current_label);
+      }
+      return;
+    case S_BLOCK:
+      LabelBlock(s->block, current_label);
+      return;
+    case S_GOTO_LABEL:
+      LabelStatement(s->goto_label->statement, current_label);
+      return;
+  }
+}
+
+void LabelBlock(Block* block, char* current_label) {
+  for (int i = 0; i < block->list->length; ++i) {
+    if (block->list->items[i]->type == B_STATEMENT) {
+      LabelStatement(block->list->items[i]->statement, current_label);
+    }
+  }
+}
+
+void AddLoopLabeling(Program* program) {
+  LabelBlock(program->function->body, NULL);
 }

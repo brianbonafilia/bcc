@@ -30,6 +30,7 @@ void VariableMapPut(VariableMap* m, char* key, char* val);
 void FreeMap(VariableMap* m);
 
 void AnalyzeSemantics(Program* program);
+void AddLoopLabeling(Program* program);
 void ResolveDeclaration(VariableMap* m, Declaration* dec);
 void ResolveStatement(VariableMap* m, Statement* statement);
 void ResolveExp(VariableMap* m, Exp* exp);
