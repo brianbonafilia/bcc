@@ -17,14 +17,15 @@ Arena allocate_arena(int size_in_bytes) {
 }
 
 void* arena_alloc(Arena* arena, int size_in_bytes) {
+  // align to 16
+  uintptr_t ret = ((uintptr_t)arena->next_ptr + 15) & ~(uintptr_t)15;
+  arena->next_ptr = (char*) ret + size_in_bytes;
+  arena->used = (char*) arena->next_ptr - (char*) arena->to_free_ptr;
   if (arena->used + size_in_bytes > arena->size) {
     fprintf(stderr, "out of memory in arena\n");
     exit(2);
   }
-  void* ret = arena->next_ptr;
-  arena->next_ptr += size_in_bytes;
-  arena->used += size_in_bytes;
-  return ret;
+  return (void *)ret;
 }
 
 void release(Arena* arena) {

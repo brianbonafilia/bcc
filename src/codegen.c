@@ -479,7 +479,7 @@ void UpdateInstructions(Arena* arena, ArmFunction* func) {
   }
   next_list_instr[pos] = (Instruction) {.type = RET};
   func->instructions = next_list_instr;
-  func->length += 2;
+  func->length += 1;
 }
 
 void InstructionFixUp(Arena* arena, ArmProgram* arm_program) {

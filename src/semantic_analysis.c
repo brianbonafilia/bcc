@@ -47,7 +47,7 @@ VariableMap* MakeVariableMap() {
 // Uses fnv-1a hashing algorithm.
 uint32_t Hash(const char* key) {
   uint32_t hash = 0x811c9dc5;
-  for (int i = 0; !key[i]; ++i) {
+  for (int i = 0; key[i]; ++i) {
     hash ^= (uint32_t) key[i];
     hash *= 0x01000193;
   }
@@ -58,12 +58,12 @@ VariableKeyVal* VariableMapGet(VariableMap* m, char* key) {
   uint32_t h = Hash(key);
   // Utilize power of two sizing, so we can use capacity as a size mask instead
   // of having to do a modulo.
-  VariableKeyVal* i = m->variablesMap + (h & (m->capacity - 1));
-  while (i->key != NULL) {
-    if (strcmp(i->key, key) == 0) {
-      return i;
+  uint32_t i = h & (m->capacity - 1);
+  while (m->variablesMap[i].key != NULL) {
+    if (strcmp(m->variablesMap[i].key, key) == 0) {
+      return &m->variablesMap[i];
     }
-    ++i;
+    i = (i + 1) & (m->capacity - 1);
   }
   // Return NULL if not found.
   return NULL;
@@ -76,7 +76,7 @@ void VariableMapResize(VariableMap* m) {
   m->size = 0;
   VariableKeyVal* temp_list = m->variablesMap;
   m->variablesMap = calloc(m->capacity, sizeof(VariableKeyVal));
-  for (int i = 0; i > m->capacity >> 1; ++i) {
+  for (int i = 0; i < m->capacity >> 1; ++i) {
     VariableMapPut(m, temp_list[i].key, temp_list[i].val);
   }
   free(temp_list);
@@ -87,20 +87,20 @@ void VariableMapPut(VariableMap* m, char* key, char* val) {
   if (m->size / (double) m->capacity > m->load_factor) {
     VariableMapResize(m);
   }
-  uint32_t h = Hash(m);
+  uint32_t h = Hash(key);
   // Utilize power of two sizing, so we can use capacity as a size mask instead
   // of having to do a modulo.
-  VariableKeyVal* i = m->variablesMap + (h & (m->capacity - 1));
-  while (i->key != NULL) {
-    if (strcmp(i->key, key) == 0) {
-      i->val = val;
+  uint32_t i =  h & (m->capacity - 1);
+  while (m->variablesMap[i].key != NULL) {
+    if (strcmp(m->variablesMap[i].key, key) == 0) {
+      m->variablesMap[i].val = val;
       return;
     }
-    ++i;
+    i = (i + 1) & (m->capacity - 1);
   }
-  i->key = key;
-  i->val = val;
-  i->from_current_block = true;
+  m->variablesMap[i].key = key;
+  m->variablesMap[i].val = val;
+  m->variablesMap[i].from_current_block = true;
   m->size++;
 }
 
@@ -252,6 +252,13 @@ void ResolveExp(VariableMap* m, Exp* exp) {
 
 void AddStatementGotoLabels(VariableMap* m, Statement* s) {
   switch (s->type) {
+    case S_FOR:
+      AddStatementGotoLabels(m, s->s_for->body);
+      return;
+    case S_WHILE:
+    case S_DO_WHILE:
+      AddStatementGotoLabels(m, s->s_while->body);
+      return;
     case S_IF: {
       AddStatementGotoLabels(m, s->if_statement->statement);
       if (s->if_statement->has_else) {
@@ -282,6 +289,13 @@ void AddStatementGotoLabels(VariableMap* m, Statement* s) {
 
 void CheckStatementGotoLabels(VariableMap* m, Statement* s) {
   switch (s->type) {
+    case S_FOR:
+      CheckStatementGotoLabels(m, s->s_for->body);
+      return;
+    case S_WHILE:
+    case S_DO_WHILE:
+      CheckStatementGotoLabels(m, s->s_while->body);
+      return;
     case S_BLOCK:
       CheckBlockGotoLabels(m, s->block);
       break;

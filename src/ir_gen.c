@@ -225,6 +225,7 @@ TackyVal EmitUnaryAssignment(Arena* a, Exp* exp, TackyFunction* tf) {
           .op = op,
           .left = src,
           .right = (TackyVal) {
+              .type = TACKY_CONST,
               .const_val = 1,
           },
           .dst = src
@@ -265,6 +266,7 @@ TackyVal EmitPostfixAssignment(Arena* a, Exp* exp, TackyFunction* tf) {
           .op = op,
           .left = src,
           .right = (TackyVal) {
+              .type = TACKY_CONST,
               .const_val = 1,
           },
           .dst = src

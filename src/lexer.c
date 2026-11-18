@@ -168,7 +168,7 @@ Token NextToken(FILE *fp) {
       c = fgetc(fp);
       if (c == '/') {
         result.type = tInvalidToken;
-        strcpy("//", result.value);
+        strcpy(result.value, "//");
         return result;
       } else if (c == '=') {
         result.type = tDividesEquals;
@@ -181,7 +181,7 @@ Token NextToken(FILE *fp) {
       c = fgetc(fp);
       if (c == '*') {
         result.type = tInvalidToken;
-        strcpy("**", result.value);
+        strcpy(result.value, "**");
         return result;
       } else if (c == '=') {
         result.type = tMultiplyEquals;
